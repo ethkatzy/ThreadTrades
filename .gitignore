@@ -1,0 +1,13 @@
+# Root-level secrets / local dev state (backend/ and frontend/ have their own .gitignore for build output)
+.env
+.env.local
+
+# Local disk storage backend (dev-only; see ROADMAP.md for object storage decision)
+data/uploads/
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

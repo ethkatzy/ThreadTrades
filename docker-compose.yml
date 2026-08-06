@@ -1,0 +1,63 @@
+# Local development only. No production deployment target has been chosen yet
+# (see ROADMAP.md) — production images/hosting are a separate step for later.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-threadtrades}
+      POSTGRES_USER: ${DB_USERNAME:-threadtrades}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-threadtrades}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-threadtrades}
+      DB_USERNAME: ${DB_USERNAME:-threadtrades}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      STORAGE_LOCAL_PATH: /data/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend:/app
+      - backend-maven-cache:/root/.m2
+      - uploads-data:/data/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+
+volumes:
+  postgres-data:
+  backend-maven-cache:
+  uploads-data:
+  frontend-node-modules:
