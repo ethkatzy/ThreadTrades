@@ -18,3 +18,7 @@ export type ClothingItem = {
 export function listMyClothingItems(token: string): Promise<ClothingItem[]> {
   return apiFetch<ClothingItem[]>("/api/clothing-items/mine", {}, token);
 }
+
+export function uploadClothingItem(token: string, formData: FormData): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>("/api/clothing-items", { method: "POST", body: formData }, token);
+}
