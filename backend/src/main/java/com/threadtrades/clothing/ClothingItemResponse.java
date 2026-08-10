@@ -16,7 +16,7 @@ public record ClothingItemResponse(
         Gender gender,
         Instant createdAt) {
 
-    static ClothingItemResponse from(ClothingItem item) {
+    public static ClothingItemResponse from(ClothingItem item) {
         return new ClothingItemResponse(
                 item.getId(),
                 item.getOwner().getId(),

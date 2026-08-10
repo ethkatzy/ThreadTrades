@@ -5,6 +5,9 @@ import com.threadtrades.auth.UsernameAlreadyInUseException;
 import com.threadtrades.clothing.ClothingItemNotFoundException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
+import com.threadtrades.swipe.CannotSwipeOwnItemException;
+import com.threadtrades.swipe.ItemAlreadySwipedException;
+import com.threadtrades.swipe.OfferedItemNotOwnedException;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -57,9 +60,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
     }
 
-    @ExceptionHandler({EmailAlreadyInUseException.class, UsernameAlreadyInUseException.class})
+    @ExceptionHandler({EmailAlreadyInUseException.class, UsernameAlreadyInUseException.class, ItemAlreadySwipedException.class})
     public ResponseEntity<ApiError> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CannotSwipeOwnItemException.class)
+    public ResponseEntity<ApiError> handleCannotSwipeOwnItem(CannotSwipeOwnItemException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(OfferedItemNotOwnedException.class)
+    public ResponseEntity<ApiError> handleOfferedItemNotOwned(OfferedItemNotOwnedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)

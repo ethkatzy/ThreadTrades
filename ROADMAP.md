@@ -17,11 +17,11 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 | # | Feature | Status | Why it's in |
 |---|---|---|---|
 | 1 | Registration / login | ✅ Done (backend JWT auth + frontend login/register pages) | Table stakes. |
-| 3+4 | Clothing upload — **one** unified path (object storage, replacing both the old BLOB and disk-file systems) | 🟡 Backend done (`StorageService`, upload/list/get endpoints); no frontend upload page yet | Core loop start. Also where the old app's worst anti-pattern (two disconnected upload systems, AUDIT.md §9) gets fixed by construction — there will only ever be one path. |
+| 3+4 | Clothing upload — **one** unified path (object storage, replacing both the old BLOB and disk-file systems) | ✅ Done (`StorageService`, upload/list/get endpoints; frontend upload page) | Core loop start. Also where the old app's worst anti-pattern (two disconnected upload systems, AUDIT.md §9) gets fixed by construction — there will only ever be one path. |
 | 2 | Home dashboard | ✅ Done (minimal — your items + entry points) | Minimal version (your items + entry points) — needed as a landing page, not over-built. |
-| 5 | Swipe deck | ⬜ Not started | Core loop. |
-| 6 | Match detection | ⬜ Not started | Core loop — atomic server-side detection from day one (AUDIT.md §10/§13), not bolted on later like the old app's dead async logic. |
-| 7 | Matches list | ⬜ Not started | Real matches, not the old hardcoded-minus-one-user hack. |
+| 5 | Swipe deck | ✅ Done (`GET /api/swipes/deck`, `POST /api/swipes`; frontend `/swipe` page with drag gesture + buttons) | Core loop. |
+| 6 | Match detection | ✅ Done (mutual-LIKE detection built atomically into `POST /api/swipes` via `SwipeService`/`ItemMatch`, not deferred — per AUDIT.md §10/§13) | Core loop — atomic server-side detection from day one, not bolted on later like the old app's dead async logic. |
+| 7 | Matches list | ⬜ Not started (matches are detected and persisted; swiping surfaces an inline "it's a match" banner, but there's no `/matches` page or list endpoint yet) | Real matches, not the old hardcoded-minus-one-user hack. |
 | 11 | Item detail view | ⬜ Not started (backend `GET /api/clothing-items/{id}` exists; no frontend page) | Needed to make swipe/matches meaningful — you have to be able to see what you matched on. |
 | 12 | Messaging | ⬜ Not started | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
 | 8+9 | Swap accept/reject | ⬜ Not started | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`), not new rows per accept/reject. |
