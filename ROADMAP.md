@@ -14,18 +14,18 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 
 ### In v1
 
-| # | Feature | Why it's in |
-|---|---|---|
-| 1 | Registration / login | Table stakes. |
-| 3+4 | Clothing upload — **one** unified path (object storage, replacing both the old BLOB and disk-file systems) | Core loop start. Also where the old app's worst anti-pattern (two disconnected upload systems, AUDIT.md §9) gets fixed by construction — there will only ever be one path. |
-| 2 | Home dashboard | Minimal version (your items + entry points) — needed as a landing page, not over-built. |
-| 5 | Swipe deck | Core loop. |
-| 6 | Match detection | Core loop — atomic server-side detection from day one (AUDIT.md §10/§13), not bolted on later like the old app's dead async logic. |
-| 7 | Matches list | Real matches, not the old hardcoded-minus-one-user hack. |
-| 11 | Item detail view | Needed to make swipe/matches meaningful — you have to be able to see what you matched on. |
-| 12 | Messaging | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
-| 8+9 | Swap accept/reject | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`), not new rows per accept/reject. |
-| 13+14 | Profile view + edit | Needed for a usable account, low effort. |
+| # | Feature | Status | Why it's in |
+|---|---|---|---|
+| 1 | Registration / login | ✅ Done (backend JWT auth + frontend login/register pages) | Table stakes. |
+| 3+4 | Clothing upload — **one** unified path (object storage, replacing both the old BLOB and disk-file systems) | 🟡 Backend done (`StorageService`, upload/list/get endpoints); no frontend upload page yet | Core loop start. Also where the old app's worst anti-pattern (two disconnected upload systems, AUDIT.md §9) gets fixed by construction — there will only ever be one path. |
+| 2 | Home dashboard | ✅ Done (minimal — your items + entry points) | Minimal version (your items + entry points) — needed as a landing page, not over-built. |
+| 5 | Swipe deck | ⬜ Not started | Core loop. |
+| 6 | Match detection | ⬜ Not started | Core loop — atomic server-side detection from day one (AUDIT.md §10/§13), not bolted on later like the old app's dead async logic. |
+| 7 | Matches list | ⬜ Not started | Real matches, not the old hardcoded-minus-one-user hack. |
+| 11 | Item detail view | ⬜ Not started (backend `GET /api/clothing-items/{id}` exists; no frontend page) | Needed to make swipe/matches meaningful — you have to be able to see what you matched on. |
+| 12 | Messaging | ⬜ Not started | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
+| 8+9 | Swap accept/reject | ⬜ Not started | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`), not new rows per accept/reject. |
+| 13+14 | Profile view + edit | ⬜ Not started (backend `GET /api/users/me` exists; no edit endpoint or frontend pages) | Needed for a usable account, low effort. |
 
 ### Deferred past v1
 
@@ -36,7 +36,6 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 | 17 | Reviews/ratings | Never shipped in the old app either (scaffolded via JDL, no product UI) — treat as a genuinely new feature to scope later, not a resurrection. |
 | 18 | Privacy/GDPR page | Needed before any real deployment with real users, but not before you can use the app yourself. Must be templated/generic this time — the old page leaked real personal contact info (AUDIT.md §9). |
 | 19–20 | Admin CRUD / admin console | Free with JHipster before; not free without it. Direct DB access covers a solo dev's admin needs at MVP stage. |
-| 16 | "Rainbow text" | Confirmed abandoned/never shipped in the old app (AUDIT.md §11) — not a requirement unless specifically revived. |
 
 ---
 
@@ -78,3 +77,54 @@ and you want it reachable by anyone other than you.
 stage — pick Railway if you want the least ops thinking, Fly.io if you want a bit more
 control and don't mind a slightly steeper setup. A VPS only makes sense if you specifically
 want the ops experience or hit a wall on managed-platform pricing/limits.
+
+---
+
+## 3. Notes from implementation (discovered along the way)
+
+Gotchas and small unresolved trade-offs hit while building auth, upload, and the
+dashboard. Not decisions that need to be made now — just things worth knowing before
+they bite again.
+
+- **Server-side vs. browser API URL diverge inside Docker.** `NEXT_PUBLIC_API_URL=http://localhost:8080`
+  is correct for the browser but wrong for anything the Next.js *server process* itself
+  needs to fetch from inside the `frontend` container (its own `next/image` optimizer
+  today; any future Server Component or Route Handler that calls the backend directly
+  tomorrow) — `localhost` there means the frontend container, not `backend`. Hasn't
+  caused a real failure yet because the only server-side fetch so far was verified with
+  the frontend running on the host, not in Compose. The day server-side code needs to
+  reach the API from inside that container, it'll need its own env var pointed at
+  `http://backend:8080`.
+- **JWT lives in browser `localStorage`, not an httpOnly cookie.** A deliberate
+  minimal-scope choice to get auth working without standing up a session/cookie layer.
+  Trade-off: vulnerable to XSS token theft in a way an httpOnly cookie isn't. Revisit
+  before any real deployment (ties into deployment target, #2 above) — likely via
+  Next.js Route Handlers acting as a BFF that sets an httpOnly session cookie, per
+  Next's own authentication guide.
+- **Next.js 16's image optimizer blocks private/loopback IPs by default (SSRF guard).**
+  `localhost` triggers it, so local dev needed `images.dangerouslyAllowLocalIP: true` in
+  `next.config.ts`. Safe today because `remotePatterns` already pins requests to exactly
+  the backend's configured host/port/`/uploads/**` path — re-check that reasoning if the
+  API URL config ever becomes more dynamic (e.g. multiple allowed backends).
+- **This Spring Boot 4 / Spring Framework 7 stack runs on Jackson 3 (`tools.jackson`)
+  internally**, while the `jjwt-jackson` dependency still pulls Jackson 2
+  (`com.fasterxml.jackson`) in as a runtime-only transitive. Don't autowire
+  `com.fasterxml.jackson.databind.ObjectMapper` in tests — it's not reliably on the
+  compile classpath. Use raw JSON strings + `JsonPath` instead (see
+  `AuthControllerTest` / `ClothingItemControllerTest`).
+- **Spring Boot 4 moved MockMvc's test annotations.** `@AutoConfigureMockMvc` now lives
+  at `org.springframework.boot.webmvc.test.autoconfigure`, not the classic
+  `org.springframework.boot.test.autoconfigure.web.servlet` path.
+- **`@DynamicPropertySource` suppliers are re-invoked on every property lookup, not
+  cached once.** A supplier like `() -> ... + UUID.randomUUID()` will hand different
+  beans different values within the same test run. Compute anything that needs to stay
+  stable once into a `static final` and have the supplier just return it.
+- **Node 25 ships a native `localStorage` global that's a non-functional stub without a
+  `--localstorage-file` flag**, and it silently shadows jsdom's working implementation
+  in Vitest. Polyfilled manually in `frontend/vitest.setup.ts` — revisit if a future
+  Node/jsdom/Vitest upgrade fixes the interaction upstream.
+- **The `postgres-data` Docker volume persists across `docker compose down` and
+  rebuilds.** If `.env`'s `DB_PASSWORD` ever changes, Postgres won't pick it up (only
+  applied on first init of an empty data directory), and the backend fails to connect
+  with an auth error. Reset the volume (`docker volume rm threadtrades_postgres-data`)
+  when rotating dev credentials.

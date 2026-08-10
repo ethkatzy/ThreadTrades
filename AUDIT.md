@@ -82,7 +82,6 @@ Schema is Liquibase-managed under `src/main/resources/config/liquibase/`. All 7 
 | 13 | User profile view | **WORKING** | Yes (navbar) |
 | 14 | Edit profile | **WORKING** (properly built Angular reactive form) | Via profile page only |
 | 15 | Dark mode toggle | **PARTIALLY WORKING** (functional but not persisted, inconsistent coverage across pages, toggle button hidden on one page only) | Via profile page only |
-| 16 | "Rainbow text" (matches search) | **NOT PRESENT** — attempted per commit history, abandoned/reverted, no trace in current code | — |
 | 17 | Reviews / ratings | **SCAFFOLDED ONLY** — entity + generated CRUD exist, zero product UI, not in the original JDL | Admin only |
 | 18 | Privacy / GDPR page | **WORKING** (static) but leaks real personal emails/phone number in markup | Yes (navbar) |
 | 19 | Admin entity management (generic JHipster CRUD for all 7 entities) | **WORKING**, admin-only | Admin only |
@@ -193,7 +192,6 @@ These are the pieces of *real, working* logic the team wrote — worth reimpleme
 ## 11. Anything Else Notable
 
 - **Language mix in comments**: some contributors wrote comments in Chinese (`matches.component.ts`, `clothing-item.service.ts`) — not a problem, just useful context if anyone goes looking for prior art in translated form.
-- **The "rainbow text" feature** referenced in commit messages ("get rainbow text back:D") was fought over across 3 commits and does not exist in the final codebase — treat as abandoned, not as a spec requirement, unless the user specifically wants it revived.
 - **Uneven team contribution** — two contributors (Izaac Roberts, Libin Zheng) account for the large majority of commits; one contributor's commits are almost entirely merge-conflict/revert cleanup rather than feature work. Not directly actionable for a solo rewrite, but useful context for judging which parts of the app got the most attention (home, userProfile, matches/match-history) vs. the least (messaging, swap transitions).
 - **No WebSocket/real-time infrastructure exists anywhere** in the old codebase, despite messaging being a core intended feature — a real-time layer (WebSocket/SSE) needs to be built from scratch in the rewrite, not migrated.
 - **Reviews/ratings entity was scaffolded via JDL and immediately abandoned** — never appeared in any product screen. If a review/rating feature is still wanted, it should be treated as a fresh feature, not a resurrection.
@@ -240,4 +238,4 @@ Constraint: **Java must be used somewhere in the backend.** Given this is now a 
 - [ ] Wire CI to actually run backend and frontend tests on every push.
 - [ ] Use append-only migrations (Flyway) — never edit an already-applied migration file.
 - [ ] Build one shared image-rendering component/helper instead of re-solving blob/URL rendering per page.
-- [ ] Skip the two known-abandoned/never-shipped ideas (Reviews/ratings, "rainbow text") unless deliberately re-scoped as new features.
+- [ ] Skip the two known-abandoned/never-shipped ideas (Reviews/ratings) unless deliberately re-scoped as new features.

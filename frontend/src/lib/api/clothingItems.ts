@@ -1,0 +1,20 @@
+import { apiFetch } from "./client";
+
+export type ClothingItem = {
+  id: number;
+  ownerId: number;
+  name: string;
+  imageUrl: string;
+  brand: string | null;
+  itemType: string;
+  description: string | null;
+  clothingSize: string;
+  colour: string | null;
+  condition: string;
+  gender: string;
+  createdAt: string;
+};
+
+export function listMyClothingItems(token: string): Promise<ClothingItem[]> {
+  return apiFetch<ClothingItem[]>("/api/clothing-items/mine", {}, token);
+}
