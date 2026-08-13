@@ -1,6 +1,7 @@
 "use client";
 
 import type { Client } from "@stomp/stompjs";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
@@ -119,7 +120,10 @@ export default function MatchThreadPage() {
         </button>
         {match && (
           <p className="text-sm font-medium">
-            {match.otherUserName} · {match.myItem.name} for {match.otherItem.name}
+            <Link href={`/matches/${matchId}/user`} className="underline">
+              {match.otherUserName}
+            </Link>{" "}
+            · {match.myItem.name} for {match.otherItem.name}
           </p>
         )}
       </div>
