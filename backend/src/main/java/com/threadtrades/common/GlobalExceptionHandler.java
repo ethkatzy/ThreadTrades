@@ -3,6 +3,7 @@ package com.threadtrades.common;
 import com.threadtrades.auth.EmailAlreadyInUseException;
 import com.threadtrades.auth.UsernameAlreadyInUseException;
 import com.threadtrades.clothing.ClothingItemNotFoundException;
+import com.threadtrades.match.MatchNotFoundException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
@@ -55,8 +56,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ApiError(ex.getMessage()));
     }
 
-    @ExceptionHandler(ClothingItemNotFoundException.class)
-    public ResponseEntity<ApiError> handleNotFound(ClothingItemNotFoundException ex) {
+    @ExceptionHandler({ClothingItemNotFoundException.class, MatchNotFoundException.class})
+    public ResponseEntity<ApiError> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
     }
 
