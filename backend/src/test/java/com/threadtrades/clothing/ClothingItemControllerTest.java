@@ -117,6 +117,23 @@ class ClothingItemControllerTest {
     }
 
     @Test
+    void uploadRejectsBlankRequiredField() throws Exception {
+        String token = registerAndGetToken("gail@example.com", "gail");
+        MockMultipartFile image =
+                new MockMultipartFile("image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
+
+        mockMvc.perform(multipart("/api/clothing-items")
+                        .file(image)
+                        .param("name", "")
+                        .param("itemType", "Jacket")
+                        .param("clothingSize", "M")
+                        .param("condition", "GOOD")
+                        .param("gender", "UNISEX")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void uploadRejectsMissingRequiredField() throws Exception {
         String token = registerAndGetToken("frank@example.com", "frank");
         MockMultipartFile image =

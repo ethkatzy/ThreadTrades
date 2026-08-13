@@ -10,6 +10,7 @@ import com.threadtrades.swap.SwapAlreadyDecidedException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
 import com.threadtrades.swipe.ItemAlreadySwipedException;
 import com.threadtrades.swipe.OfferedItemNotOwnedException;
+import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +36,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<ApiError> handleParameterValidation(HandlerMethodValidationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
+    }
+
+    // Bean-validation annotations (@NotBlank, @Size, ...) on @RequestParam/@RequestPart method
+    // parameters are enforced by the @Validated AOP proxy, which throws this instead of
+    // HandlerMethodValidationException above -- both are "a request parameter failed validation",
+    // just raised through different mechanisms depending on where in the MVC pipeline Spring
+    // catches it.
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+                .collect(Collectors.joining("; "));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(message));
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)

@@ -44,3 +44,7 @@ export function login(input: LoginInput): Promise<AuthResponse> {
 export function getCurrentUser(token: string): Promise<UserProfile> {
   return apiFetch<UserProfile>("/api/users/me", {}, token);
 }
+
+export function updateProfile(token: string, formData: FormData): Promise<UserProfile> {
+  return apiFetch<UserProfile>("/api/users/me", { method: "PATCH", body: formData }, token);
+}

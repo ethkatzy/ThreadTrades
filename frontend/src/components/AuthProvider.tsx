@@ -5,6 +5,7 @@ import {
   getCurrentUser,
   login as apiLogin,
   register as apiRegister,
+  updateProfile as apiUpdateProfile,
   type AuthResponse,
   type LoginInput,
   type RegisterInput,
@@ -18,6 +19,7 @@ type AuthContextValue = {
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
+  updateProfile: (formData: FormData) => Promise<void>;
   logout: () => void;
 };
 
@@ -76,6 +78,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession],
   );
 
+  const updateProfile = useCallback(
+    async (formData: FormData) => {
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+      setUser(await apiUpdateProfile(token, formData));
+    },
+    [token],
+  );
+
   const logout = useCallback(() => {
     clearStoredToken();
     setToken(null);
@@ -83,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, register, logout }}>
+    <AuthContext.Provider value={{ token, user, isLoading, login, register, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

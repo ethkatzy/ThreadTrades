@@ -78,6 +78,15 @@ public class UserProfile {
         return profilePictureUrl;
     }
 
+    public void updateDetails(String name, String bio) {
+        this.name = name;
+        this.bio = bio;
+    }
+
+    public void updateProfilePicture(String profilePictureUrl) {
+        this.profilePictureUrl = profilePictureUrl;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
