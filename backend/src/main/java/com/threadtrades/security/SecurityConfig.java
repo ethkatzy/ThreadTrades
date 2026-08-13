@@ -50,7 +50,11 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/actuator/health", "/actuator/info", "/uploads/**")
+                        // /ws/** is the STOMP handshake -- browsers can't attach an Authorization
+                        // header to it, so it can't require the JWT filter like other endpoints.
+                        // The JWT instead travels as a STOMP CONNECT header and is enforced by
+                        // StompAuthChannelInterceptor once the socket is open.
+                        .requestMatchers("/api/auth/**", "/actuator/health", "/actuator/info", "/uploads/**", "/ws/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())

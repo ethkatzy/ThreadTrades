@@ -120,6 +120,19 @@
 			<artifactId>spring-boot-starter-websocket-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- TestRestTemplate (spring-boot-resttestclient) needs RestTemplateBuilder from
+		     spring-boot-restclient at runtime; the app itself uses WebMvc controllers, not
+		     an outbound RestTemplate, so this is otherwise absent from the classpath. -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-restclient</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-resttestclient</artifactId>
+			<scope>test</scope>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-testcontainers</artifactId>
