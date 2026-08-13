@@ -6,6 +6,7 @@ import com.threadtrades.clothing.ClothingItemNotFoundException;
 import com.threadtrades.match.MatchNotFoundException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
+import com.threadtrades.swap.SwapAlreadyDecidedException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
 import com.threadtrades.swipe.ItemAlreadySwipedException;
 import com.threadtrades.swipe.OfferedItemNotOwnedException;
@@ -61,7 +62,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
     }
 
-    @ExceptionHandler({EmailAlreadyInUseException.class, UsernameAlreadyInUseException.class, ItemAlreadySwipedException.class})
+    @ExceptionHandler({
+        EmailAlreadyInUseException.class,
+        UsernameAlreadyInUseException.class,
+        ItemAlreadySwipedException.class,
+        SwapAlreadyDecidedException.class
+    })
     public ResponseEntity<ApiError> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(ex.getMessage()));
     }

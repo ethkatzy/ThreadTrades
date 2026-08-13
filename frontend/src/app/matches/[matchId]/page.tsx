@@ -7,6 +7,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { listMatches, type Match } from "@/lib/api/matches";
 import { listMessages, sendMessage, type Message } from "@/lib/api/messages";
+import { acceptSwap, getSwap, rejectSwap, type Swap } from "@/lib/api/swaps";
 import { connectMatchSocket } from "@/lib/ws/matchSocket";
 
 export default function MatchThreadPage() {
@@ -21,6 +22,9 @@ export default function MatchThreadPage() {
   const [draft, setDraft] = useState("");
   const [connected, setConnected] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [swap, setSwap] = useState<Swap | null>(null);
+  const [swapError, setSwapError] = useState<string | null>(null);
+  const [isDeciding, setIsDeciding] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
@@ -40,6 +44,9 @@ export default function MatchThreadPage() {
     listMessages(token, matchId)
       .then(setMessages)
       .catch(() => setError("Couldn't load messages."));
+    getSwap(token, matchId)
+      .then(setSwap)
+      .catch(() => setSwapError("Couldn't load swap status."));
   }, [token, matchId]);
 
   useEffect(() => {
@@ -50,6 +57,7 @@ export default function MatchThreadPage() {
       token,
       matchId,
       onMessage: (message) => setMessages((prev) => (prev ? [...prev, message] : [message])),
+      onSwapUpdate: setSwap,
       onConnectedChange: setConnected,
     });
     return () => {
@@ -80,6 +88,21 @@ export default function MatchThreadPage() {
     }
   }
 
+  async function handleSwapDecision(decide: (token: string, matchId: number) => Promise<Swap>) {
+    if (!token || isDeciding) {
+      return;
+    }
+    setIsDeciding(true);
+    setSwapError(null);
+    try {
+      setSwap(await decide(token, matchId));
+    } catch (err) {
+      setSwapError(err instanceof ApiError ? err.message : "Couldn't update the swap.");
+    } finally {
+      setIsDeciding(false);
+    }
+  }
+
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
@@ -100,6 +123,51 @@ export default function MatchThreadPage() {
           </p>
         )}
       </div>
+
+      {match && swap && (
+        <div className="rounded-lg border border-black/10 p-3 text-sm dark:border-white/20">
+          {swap.status === "ACCEPTED" && (
+            <p className="font-medium text-green-700 dark:text-green-400">
+              Swap complete — {match.myItem.name} and {match.otherItem.name} are no longer up for grabs.
+            </p>
+          )}
+          {swap.status === "REJECTED" && (
+            <p className="text-zinc-600 dark:text-zinc-400">This swap was declined.</p>
+          )}
+          {swap.status === "PENDING" && (
+            <div className="flex items-center justify-between gap-3">
+              <p>
+                {swap.iAccepted
+                  ? `You accepted. Waiting for ${match.otherUserName} to confirm.`
+                  : swap.otherAccepted
+                    ? `${match.otherUserName} wants to complete this swap.`
+                    : `Ready to swap ${match.myItem.name} for ${match.otherItem.name}?`}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                {!swap.iAccepted && (
+                  <button
+                    type="button"
+                    onClick={() => handleSwapDecision(acceptSwap)}
+                    disabled={isDeciding}
+                    className="rounded bg-foreground px-3 py-1.5 text-xs text-background disabled:opacity-50"
+                  >
+                    Accept
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleSwapDecision(rejectSwap)}
+                  disabled={isDeciding}
+                  className="rounded border border-black/10 px-3 py-1.5 text-xs disabled:opacity-50 dark:border-white/20"
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      {swapError && <p className="text-sm text-red-600">{swapError}</p>}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {messages === null && !error && (

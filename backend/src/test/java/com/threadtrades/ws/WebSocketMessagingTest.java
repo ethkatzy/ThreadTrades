@@ -128,6 +128,17 @@ class WebSocketMessagingTest {
         return matchId.longValue();
     }
 
+    private void acceptSwap(String token, Long matchId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(token);
+        ResponseEntity<String> response = restTemplate.exchange(
+                "/api/matches/" + matchId + "/swap/accept",
+                org.springframework.http.HttpMethod.PATCH,
+                new HttpEntity<>(headers),
+                String.class);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
     private void sendMessage(String token, Long matchId, String content) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -203,6 +214,32 @@ class WebSocketMessagingTest {
         Map<String, Object> received = handler.messages.poll(5, TimeUnit.SECONDS);
         assertNotNull(received);
         assertEquals("Hi Xavier!", received.get("content"));
+        assertEquals(matchId, ((Number) received.get("matchId")).longValue());
+
+        session.disconnect();
+        client.stop();
+    }
+
+    @Test
+    void matchParticipantReceivesLiveSwapUpdateOverWebSocket() throws Exception {
+        String tokenA = registerAndGetToken("uma@example.com", "uma");
+        String tokenB = registerAndGetToken("victor@example.com", "victor");
+        Long itemA = uploadItem(tokenA, "Uma's Jacket");
+        Long itemB = uploadItem(tokenB, "Victor's Jacket");
+        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+
+        WebSocketStompClient client = newStompClient();
+        RecordingStompSessionHandler handler = new RecordingStompSessionHandler();
+        StompSession session = connect(client, tokenB, handler);
+        session.subscribe(SwapTopics.destination(matchId), handler);
+        // Give the SUBSCRIBE frame time to reach the broker before the accept is recorded.
+        Thread.sleep(300);
+
+        acceptSwap(tokenA, matchId);
+
+        Map<String, Object> received = handler.messages.poll(5, TimeUnit.SECONDS);
+        assertNotNull(received);
+        assertEquals("PENDING", received.get("status"));
         assertEquals(matchId, ((Number) received.get("matchId")).longValue());
 
         session.disconnect();

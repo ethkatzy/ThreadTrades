@@ -24,7 +24,7 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 | 7 | Matches list | ✅ Done (`GET /api/matches`, viewer-relative `MatchResponse`; frontend `/matches` page) | Real matches, not the old hardcoded-minus-one-user hack. |
 | 11 | Item detail view | ✅ Done (frontend `/clothing-items/[id]` page over the existing `GET /api/clothing-items/{id}`) | Needed to make swipe/matches meaningful — you have to be able to see what you matched on. |
 | 12 | Messaging | ✅ Done (one thread per match via `message.match_id`; REST history/send + STOMP real-time push over `/topic/matches/{id}`, JWT carried as a STOMP CONNECT header since browsers can't set it on the WS handshake; frontend `/matches/[matchId]` chat page) | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
-| 8+9 | Swap accept/reject | ⬜ Not started | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`), not new rows per accept/reject. |
+| 8+9 | Swap accept/reject | ✅ Done (mutual-consent state transitions on one `swap` row per match — `GET`/`PATCH .../accept`/`PATCH .../reject` under `/api/matches/{id}/swap`, STOMP push over `/topic/matches/{id}/swap`; both items marked `SWAPPED` and pulled from every deck once both sides accept; frontend accept/reject banner on the `/matches/[matchId]` chat page) | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`, extended by `V3__...sql` with per-user accept flags), not new rows per accept/reject. |
 | 13+14 | Profile view + edit | ⬜ Not started (backend `GET /api/users/me` exists; no edit endpoint or frontend pages) | Needed for a usable account, low effort. |
 
 ### Deferred past v1

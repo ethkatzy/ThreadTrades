@@ -14,6 +14,7 @@ public record ClothingItemResponse(
         String colour,
         Condition condition,
         Gender gender,
+        ItemStatus status,
         Instant createdAt) {
 
     public static ClothingItemResponse from(ClothingItem item) {
@@ -29,6 +30,7 @@ public record ClothingItemResponse(
                 item.getColour(),
                 item.getCondition(),
                 item.getGender(),
+                item.getStatus(),
                 item.getCreatedAt());
     }
 }

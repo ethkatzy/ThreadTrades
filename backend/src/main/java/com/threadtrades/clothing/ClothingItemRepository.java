@@ -13,6 +13,7 @@ public interface ClothingItemRepository extends JpaRepository<ClothingItem, Long
     @Query("""
             SELECT c FROM ClothingItem c
             WHERE c.owner.id <> :viewerProfileId
+            AND c.status = com.threadtrades.clothing.ItemStatus.AVAILABLE
             AND c.id NOT IN (
                 SELECT s.swipedItem.id FROM Swipe s
                 WHERE s.swiper.id = :viewerProfileId AND s.offeredItem.id = :offeredItemId

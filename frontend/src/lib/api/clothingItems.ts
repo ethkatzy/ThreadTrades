@@ -12,6 +12,7 @@ export type ClothingItem = {
   colour: string | null;
   condition: string;
   gender: string;
+  status: "AVAILABLE" | "SWAPPED";
   createdAt: string;
 };
 

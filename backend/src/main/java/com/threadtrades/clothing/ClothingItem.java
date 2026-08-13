@@ -57,6 +57,10 @@ public class ClothingItem {
     @Column(nullable = false)
     private Gender gender;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ItemStatus status = ItemStatus.AVAILABLE;
+
     @CreationTimestamp
     @Column(name = "last_accessed", nullable = false, updatable = false)
     private Instant lastAccessed;
@@ -133,6 +137,15 @@ public class ClothingItem {
 
     public Gender getGender() {
         return gender;
+    }
+
+    public ItemStatus getStatus() {
+        return status;
+    }
+
+    /** Called once a swap involving this item finalizes -- pulls it out of every deck for good. */
+    public void markSwapped() {
+        this.status = ItemStatus.SWAPPED;
     }
 
     public Instant getLastAccessed() {
