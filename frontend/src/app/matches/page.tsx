@@ -76,12 +76,12 @@ export default function MatchesPage() {
                   />
                 </div>
               </Link>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{match.otherUserName}</p>
+              <Link href={`/matches/${match.id}`} className="min-w-0 flex-1">
+                <p className="font-medium underline">{match.otherUserName}</p>
                 <p className="truncate text-sm text-zinc-600 dark:text-zinc-400">
                   Matched on {match.otherItem.name} for your {match.myItem.name}
                 </p>
-              </div>
+              </Link>
               <Link href={`/clothing-items/${match.myItem.id}`} className="shrink-0">
                 <div className="relative h-20 w-20 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
                   <Image
