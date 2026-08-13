@@ -1,5 +1,24 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { uploadClothingItem } from "./clothingItems";
+import { getClothingItem, uploadClothingItem } from "./clothingItems";
+
+describe("getClothingItem", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches a single item by id with auth header", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ id: 5 }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getClothingItem("abc123", 5);
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("http://localhost:8080/api/clothing-items/5");
+    expect((init.headers as Headers).get("Authorization")).toBe("Bearer abc123");
+  });
+});
 
 describe("uploadClothingItem", () => {
   afterEach(() => {

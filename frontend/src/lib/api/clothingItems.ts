@@ -19,6 +19,10 @@ export function listMyClothingItems(token: string): Promise<ClothingItem[]> {
   return apiFetch<ClothingItem[]>("/api/clothing-items/mine", {}, token);
 }
 
+export function getClothingItem(token: string, id: number): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>(`/api/clothing-items/${id}`, {}, token);
+}
+
 export function uploadClothingItem(token: string, formData: FormData): Promise<ClothingItem> {
   return apiFetch<ClothingItem>("/api/clothing-items", { method: "POST", body: formData }, token);
 }
