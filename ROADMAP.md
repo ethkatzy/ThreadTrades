@@ -23,7 +23,7 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 | 6 | Match detection | ✅ Done (mutual-LIKE detection built atomically into `POST /api/swipes` via `SwipeService`/`ItemMatch`, not deferred — per AUDIT.md §10/§13) | Core loop — atomic server-side detection from day one, not bolted on later like the old app's dead async logic. |
 | 7 | Matches list | ✅ Done (`GET /api/matches`, viewer-relative `MatchResponse`; frontend `/matches` page) | Real matches, not the old hardcoded-minus-one-user hack. |
 | 11 | Item detail view | ✅ Done (frontend `/clothing-items/[id]` page over the existing `GET /api/clothing-items/{id}`) | Needed to make swipe/matches meaningful — you have to be able to see what you matched on. |
-| 12 | Messaging | ⬜ Not started | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
+| 12 | Messaging | ✅ Done (one thread per match via `message.match_id`; REST history/send + STOMP real-time push over `/topic/matches/{id}`, JWT carried as a STOMP CONNECT header since browsers can't set it on the WS handshake; frontend `/matches/[matchId]` chat page) | Real, persisted messaging tied to a match, over WebSocket (STOMP) per the tech-stack decision. Core loop, not deferrable. |
 | 8+9 | Swap accept/reject | ⬜ Not started | Core loop close-out — real state transitions on one `swap` row (see `V1__init_schema.sql`), not new rows per accept/reject. |
 | 13+14 | Profile view + edit | ⬜ Not started (backend `GET /api/users/me` exists; no edit endpoint or frontend pages) | Needed for a usable account, low effort. |
 
