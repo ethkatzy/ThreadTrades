@@ -14,6 +14,8 @@ export type ClothingItem = {
   gender: string;
   status: "AVAILABLE" | "SWAPPED";
   createdAt: string;
+  ownerAverageRating: number | null;
+  ownerReviewCount: number;
 };
 
 export function listMyClothingItems(token: string): Promise<ClothingItem[]> {

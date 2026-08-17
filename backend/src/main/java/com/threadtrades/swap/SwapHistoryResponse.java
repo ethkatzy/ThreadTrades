@@ -1,34 +1,32 @@
-package com.threadtrades.match;
+package com.threadtrades.swap;
 
 import com.threadtrades.clothing.ClothingItemResponse;
+import com.threadtrades.match.ItemMatch;
 import com.threadtrades.user.UserProfile;
 import java.time.Instant;
 
-public record MatchResponse(
-        Long id,
+public record SwapHistoryResponse(
+        Long matchId,
         Long otherUserId,
         String otherUsername,
         String otherUserName,
         String otherUserProfilePictureUrl,
-        Double otherUserAverageRating,
-        long otherUserReviewCount,
         ClothingItemResponse myItem,
         ClothingItemResponse otherItem,
-        Instant createdAt) {
+        Instant completedAt) {
 
-    static MatchResponse from(ItemMatch match, Long viewerProfileId, Double otherUserAverageRating, long otherUserReviewCount) {
+    static SwapHistoryResponse from(Swap swap, Long viewerProfileId) {
+        ItemMatch match = swap.getMatch();
         boolean viewerIsA = match.getUserA().getId().equals(viewerProfileId);
         UserProfile otherUser = viewerIsA ? match.getUserB() : match.getUserA();
-        return new MatchResponse(
+        return new SwapHistoryResponse(
                 match.getId(),
                 otherUser.getId(),
                 otherUser.getUsername(),
                 otherUser.getName(),
                 otherUser.getProfilePictureUrl(),
-                otherUserAverageRating,
-                otherUserReviewCount,
                 ClothingItemResponse.from(viewerIsA ? match.getItemA() : match.getItemB()),
                 ClothingItemResponse.from(viewerIsA ? match.getItemB() : match.getItemA()),
-                match.getCreatedAt());
+                swap.getUpdatedAt());
     }
 }

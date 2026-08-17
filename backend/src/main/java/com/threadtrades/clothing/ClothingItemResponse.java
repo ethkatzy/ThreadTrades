@@ -15,9 +15,15 @@ public record ClothingItemResponse(
         Condition condition,
         Gender gender,
         ItemStatus status,
-        Instant createdAt) {
+        Instant createdAt,
+        Double ownerAverageRating,
+        long ownerReviewCount) {
 
     public static ClothingItemResponse from(ClothingItem item) {
+        return from(item, null, 0L);
+    }
+
+    public static ClothingItemResponse from(ClothingItem item, Double ownerAverageRating, long ownerReviewCount) {
         return new ClothingItemResponse(
                 item.getId(),
                 item.getOwner().getId(),
@@ -31,6 +37,8 @@ public record ClothingItemResponse(
                 item.getCondition(),
                 item.getGender(),
                 item.getStatus(),
-                item.getCreatedAt());
+                item.getCreatedAt(),
+                ownerAverageRating,
+                ownerReviewCount);
     }
 }

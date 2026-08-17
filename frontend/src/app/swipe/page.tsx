@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import { RatingBadge } from "@/components/RatingBadge";
 import { ApiError } from "@/lib/api/client";
 import { listMyClothingItems, type ClothingItem } from "@/lib/api/clothingItems";
 import { getSwipeDeck, recordSwipe, type SwipeDecision } from "@/lib/api/swipes";
@@ -246,6 +247,14 @@ export default function SwipePage() {
               )}
             </div>
           </div>
+
+          {/* Outside the draggable card on purpose: that div captures the pointer for the
+              swipe gesture, which would swallow clicks on a nested link. */}
+          <RatingBadge
+            userId={currentItem.ownerId}
+            averageRating={currentItem.ownerAverageRating}
+            reviewCount={currentItem.ownerReviewCount}
+          />
 
           <div className="flex gap-4">
             <button

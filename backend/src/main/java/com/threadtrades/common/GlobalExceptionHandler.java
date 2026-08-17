@@ -4,12 +4,14 @@ import com.threadtrades.auth.EmailAlreadyInUseException;
 import com.threadtrades.auth.UsernameAlreadyInUseException;
 import com.threadtrades.clothing.ClothingItemNotFoundException;
 import com.threadtrades.match.MatchNotFoundException;
+import com.threadtrades.review.SwapNotCompletedException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
 import com.threadtrades.swap.SwapAlreadyDecidedException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
 import com.threadtrades.swipe.ItemAlreadySwipedException;
 import com.threadtrades.swipe.OfferedItemNotOwnedException;
+import com.threadtrades.user.UserProfileNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
@@ -71,7 +73,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ApiError(ex.getMessage()));
     }
 
-    @ExceptionHandler({ClothingItemNotFoundException.class, MatchNotFoundException.class})
+    @ExceptionHandler({ClothingItemNotFoundException.class, MatchNotFoundException.class, UserProfileNotFoundException.class})
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
     }
@@ -80,7 +82,8 @@ public class GlobalExceptionHandler {
         EmailAlreadyInUseException.class,
         UsernameAlreadyInUseException.class,
         ItemAlreadySwipedException.class,
-        SwapAlreadyDecidedException.class
+        SwapAlreadyDecidedException.class,
+        SwapNotCompletedException.class
     })
     public ResponseEntity<ApiError> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(ex.getMessage()));

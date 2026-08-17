@@ -8,6 +8,8 @@ export type Match = {
   otherUsername: string;
   otherUserName: string;
   otherUserProfilePictureUrl: string | null;
+  otherUserAverageRating: number | null;
+  otherUserReviewCount: number;
   myItem: ClothingItem;
   otherItem: ClothingItem;
   createdAt: string;
