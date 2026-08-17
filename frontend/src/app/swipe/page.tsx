@@ -129,6 +129,7 @@ export default function SwipePage() {
   }
 
   const offeredItem = myItems?.find((item) => item.id === offeredItemId) ?? null;
+  const availableItems = myItems?.filter((item) => item.status === "AVAILABLE") ?? null;
 
   if (offeredItemId === null || !offeredItem) {
     return (
@@ -153,9 +154,19 @@ export default function SwipePage() {
             </Link>
           </div>
         )}
-        {myItems && myItems.length > 0 && (
+        {availableItems && myItems && myItems.length > 0 && availableItems.length === 0 && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              All your items have already been swapped. Upload something new to keep swiping.
+            </p>
+            <Link href="/clothing-items/upload" className="text-sm underline">
+              Upload an item
+            </Link>
+          </div>
+        )}
+        {availableItems && availableItems.length > 0 && (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-            {myItems.map((item) => (
+            {availableItems.map((item) => (
               <li key={item.id}>
                 <button
                   type="button"
