@@ -53,6 +53,9 @@ public class AuthService {
                 .findByEmail(request.email())
                 .filter(user -> passwordEncoder.matches(request.password(), user.getPasswordHash()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+        if (appUser.isBanned()) {
+            throw new BannedUserException();
+        }
 
         UserProfile profile = userProfileRepository.findByAppUserId(appUser.getId()).orElseThrow();
 

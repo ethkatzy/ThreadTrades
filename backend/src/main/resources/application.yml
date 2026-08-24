@@ -36,4 +36,9 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        # health/info stay public (SecurityConfig permitAll()); everything else
+        # here (metrics, env) requires ROLE_ADMIN via the /actuator/** matcher.
+        include: health,info,metrics,env
+  endpoint:
+    health:
+      show-details: when-authorized

@@ -27,7 +27,7 @@ public class UserController {
 
     @GetMapping("/me")
     public UserProfileResponse me(@AuthenticationPrincipal AuthenticatedUser currentUser) {
-        return UserProfileResponse.from(userProfileService.getProfile(currentUser.appUserId()));
+        return UserProfileResponse.from(userProfileService.getProfile(currentUser.appUserId()), currentUser.role());
     }
 
     @PatchMapping(path = "/me", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -37,6 +37,6 @@ public class UserController {
             @RequestParam(required = false) @Size(max = 1000) String bio,
             @RequestPart(name = "image", required = false) MultipartFile image) {
         UserProfile profile = userProfileService.updateProfile(currentUser.appUserId(), name, bio, image);
-        return UserProfileResponse.from(profile);
+        return UserProfileResponse.from(profile, currentUser.role());
     }
 }

@@ -56,6 +56,11 @@ public class SecurityConfig {
                         // StompAuthChannelInterceptor once the socket is open.
                         .requestMatchers("/api/auth/**", "/actuator/health", "/actuator/info", "/uploads/**", "/ws/**")
                         .permitAll()
+                        // Evaluated after the permitAll() above, so /actuator/health and
+                        // /actuator/info stay public (first matching rule wins) -- this only
+                        // gates the rest of /actuator/** (metrics, env, ...) plus the admin API.
+                        .requestMatchers("/api/admin/**", "/actuator/**")
+                        .hasRole("ADMIN")
                         .anyRequest()
                         .authenticated())
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint))

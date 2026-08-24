@@ -148,6 +148,11 @@ public class ClothingItem {
         this.status = ItemStatus.SWAPPED;
     }
 
+    /** Admin moderation action -- pulls the item out of every deck without deleting match/swap history. */
+    public void markRemoved() {
+        this.status = ItemStatus.REMOVED;
+    }
+
     public Instant getLastAccessed() {
         return lastAccessed;
     }

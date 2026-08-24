@@ -1,0 +1,96 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { Pagination } from "@/components/Pagination";
+import { deleteAdminMessage, listAdminMessages, type PagedResponse } from "@/lib/api/admin";
+import { ApiError } from "@/lib/api/client";
+import type { Message } from "@/lib/api/messages";
+
+export default function AdminMessagesPage() {
+  const { token } = useAuth();
+  const [result, setResult] = useState<PagedResponse<Message> | null>(null);
+  const [page, setPage] = useState(0);
+  const [matchId, setMatchId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  function load() {
+    if (!token) {
+      return;
+    }
+    listAdminMessages(token, page, 20, matchId ? Number(matchId) : undefined)
+      .then((r) => {
+        setResult(r);
+        setError(null);
+      })
+      .catch(() => setError("Couldn't load messages."));
+  }
+
+  useEffect(load, [token, page, matchId]);
+
+  async function handleDelete(id: number) {
+    if (!token) {
+      return;
+    }
+    setActionError(null);
+    try {
+      await deleteAdminMessage(token, id);
+      load();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Couldn't delete this message.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-medium">Messages</h2>
+        <input
+          type="number"
+          placeholder="Filter by match id"
+          value={matchId}
+          onChange={(event) => {
+            setPage(0);
+            setMatchId(event.target.value);
+          }}
+          className="w-48 rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+        />
+      </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {actionError && <p className="text-sm text-red-600">{actionError}</p>}
+
+      {result && (
+        <ul className="flex flex-col gap-2">
+          {result.content.map((message) => (
+            <li
+              key={message.id}
+              className="flex items-start justify-between gap-3 rounded border border-black/10 p-3 text-sm dark:border-white/20"
+            >
+              <div className="min-w-0">
+                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                  Match #{message.matchId} · sender #{message.senderId} ·{" "}
+                  {new Date(message.sentAt).toLocaleString()}
+                </p>
+                <p className="break-words">{message.content}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleDelete(message.id)}
+                className="shrink-0 rounded border border-black/10 px-3 py-1 text-xs dark:border-white/20"
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+          {result.content.length === 0 && (
+            <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-400">No messages found.</p>
+          )}
+        </ul>
+      )}
+
+      {result && <Pagination page={result.page} totalPages={result.totalPages} onPageChange={setPage} />}
+    </div>
+  );
+}

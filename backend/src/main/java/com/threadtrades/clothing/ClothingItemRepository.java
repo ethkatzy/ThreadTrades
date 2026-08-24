@@ -1,6 +1,7 @@
 package com.threadtrades.clothing;
 
 import java.util.List;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +10,8 @@ import org.springframework.data.repository.query.Param;
 public interface ClothingItemRepository extends JpaRepository<ClothingItem, Long> {
 
     List<ClothingItem> findAllByOwnerId(Long ownerUserProfileId);
+
+    Page<ClothingItem> findByStatus(ItemStatus status, Pageable pageable);
 
     @Query("""
             SELECT c FROM ClothingItem c

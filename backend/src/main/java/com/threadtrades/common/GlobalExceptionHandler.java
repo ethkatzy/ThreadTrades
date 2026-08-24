@@ -1,13 +1,19 @@
 package com.threadtrades.common;
 
+import com.threadtrades.admin.CannotBanSelfException;
+import com.threadtrades.admin.InvalidSwapForceResolveException;
+import com.threadtrades.auth.BannedUserException;
 import com.threadtrades.auth.EmailAlreadyInUseException;
 import com.threadtrades.auth.UsernameAlreadyInUseException;
 import com.threadtrades.clothing.ClothingItemNotFoundException;
 import com.threadtrades.match.MatchNotFoundException;
+import com.threadtrades.message.MessageNotFoundException;
+import com.threadtrades.review.ReviewNotFoundException;
 import com.threadtrades.review.SwapNotCompletedException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
 import com.threadtrades.swap.SwapAlreadyDecidedException;
+import com.threadtrades.swap.SwapNotFoundException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
 import com.threadtrades.swipe.ItemAlreadySwipedException;
 import com.threadtrades.swipe.OfferedItemNotOwnedException;
@@ -73,7 +79,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(new ApiError(ex.getMessage()));
     }
 
-    @ExceptionHandler({ClothingItemNotFoundException.class, MatchNotFoundException.class, UserProfileNotFoundException.class})
+    @ExceptionHandler({
+        ClothingItemNotFoundException.class,
+        MatchNotFoundException.class,
+        UserProfileNotFoundException.class,
+        SwapNotFoundException.class,
+        MessageNotFoundException.class,
+        ReviewNotFoundException.class
+    })
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
     }
@@ -99,8 +112,23 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
     }
 
+    @ExceptionHandler(InvalidSwapForceResolveException.class)
+    public ResponseEntity<ApiError> handleInvalidSwapForceResolve(InvalidSwapForceResolveException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CannotBanSelfException.class)
+    public ResponseEntity<ApiError> handleCannotBanSelf(CannotBanSelfException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
+    }
+
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiError> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(BannedUserException.class)
+    public ResponseEntity<ApiError> handleBannedUser(BannedUserException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new ApiError(ex.getMessage()));
     }
 }

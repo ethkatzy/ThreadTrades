@@ -13,6 +13,7 @@ export type UserProfile = {
   name: string;
   bio: string | null;
   profilePictureUrl: string | null;
+  role: "USER" | "ADMIN" | null;
 };
 
 export type RegisterInput = {

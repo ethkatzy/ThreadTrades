@@ -1,6 +1,7 @@
 package com.threadtrades.security;
 
 import com.threadtrades.user.AppUser;
+import com.threadtrades.user.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -31,6 +32,7 @@ public class JwtService {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
+                .claim("role", user.getRole().name())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusMillis(expirationMs)))
                 .signWith(key)
@@ -46,7 +48,8 @@ public class JwtService {
                     .getPayload();
             Long appUserId = Long.valueOf(claims.getSubject());
             String email = claims.get("email", String.class);
-            return Optional.of(new AuthenticatedUser(appUserId, email));
+            Role role = Role.valueOf(claims.get("role", String.class));
+            return Optional.of(new AuthenticatedUser(appUserId, email, role));
         } catch (JwtException | IllegalArgumentException e) {
             return Optional.empty();
         }

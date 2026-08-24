@@ -78,6 +78,14 @@ export default function HomePage() {
             {entry.label}
           </Link>
         ))}
+        {user.role === "ADMIN" && (
+          <Link
+            href="/admin"
+            className="rounded border border-black/10 px-4 py-2 text-sm dark:border-white/20"
+          >
+            Admin
+          </Link>
+        )}
       </nav>
 
       <section>

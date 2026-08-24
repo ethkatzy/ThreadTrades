@@ -12,7 +12,7 @@ export type ClothingItem = {
   colour: string | null;
   condition: string;
   gender: string;
-  status: "AVAILABLE" | "SWAPPED";
+  status: "AVAILABLE" | "SWAPPED" | "REMOVED";
   createdAt: string;
   ownerAverageRating: number | null;
   ownerReviewCount: number;
