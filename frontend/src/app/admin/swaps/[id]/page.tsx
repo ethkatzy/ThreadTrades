@@ -6,6 +6,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { forceResolveSwap, getAdminSwap, type AdminSwap } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { Button } from "@/components/Button";
+import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminSwapDetailPage() {
   const { token } = useAuth();
@@ -45,47 +47,49 @@ export default function AdminSwapDetailPage() {
     return <p className="text-sm text-red-600">{error}</p>;
   }
   if (!swap) {
-    return <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>;
+    return <p className="text-sm text-muted">Loading…</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <h2 className="text-lg font-medium">Swap #{swap.id}</h2>
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-        <dt className="text-zinc-600 dark:text-zinc-400">Match</dt>
+      <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 text-sm">
+        <dt className="text-muted">Match</dt>
         <dd>
-          <Link href={`/admin/matches/${swap.matchId}`} className="underline">
+          <Link href={`/admin/matches/${swap.matchId}`} className="text-accent underline">
             #{swap.matchId}
           </Link>
         </dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Status</dt>
-        <dd>{swap.status}</dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Accepted by A</dt>
+        <dt className="text-muted">Status</dt>
+        <dd>
+          <StatusBadge label={swap.status} tone={swapStatusTone(swap.status)} />
+        </dd>
+        <dt className="text-muted">Accepted by A</dt>
         <dd>{swap.acceptedByUserA ? "Yes" : "No"}</dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Accepted by B</dt>
+        <dt className="text-muted">Accepted by B</dt>
         <dd>{swap.acceptedByUserB ? "Yes" : "No"}</dd>
-        <dt className="text-zinc-600 dark:text-zinc-400">Last updated</dt>
+        <dt className="text-muted">Last updated</dt>
         <dd>{new Date(swap.updatedAt).toLocaleString()}</dd>
       </dl>
 
       {actionError && <p className="text-sm text-red-600">{actionError}</p>}
       <div className="flex gap-3">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           disabled={isSubmitting || swap.status === "ACCEPTED"}
           onClick={() => handleForceResolve("ACCEPTED")}
-          className="rounded border border-black/10 px-4 py-2 text-sm disabled:opacity-50 dark:border-white/20"
         >
           Force accept
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="secondary"
           disabled={isSubmitting || swap.status === "REJECTED"}
           onClick={() => handleForceResolve("REJECTED")}
-          className="rounded border border-black/10 px-4 py-2 text-sm disabled:opacity-50 dark:border-white/20"
         >
           Force reject
-        </button>
+        </Button>
       </div>
     </div>
   );

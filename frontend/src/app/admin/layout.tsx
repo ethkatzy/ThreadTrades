@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 
@@ -26,6 +26,7 @@ const ADMIN_NAV = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoading && (!user || user.role !== "ADMIN")) {
@@ -36,7 +37,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (isLoading || !user || user.role !== "ADMIN") {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
@@ -45,20 +46,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-10">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Admin</h1>
-        <Link href="/" className="text-sm underline">
+        <Link href="/" className="text-sm text-accent underline">
           Back to app
         </Link>
       </div>
-      <nav className="flex flex-wrap gap-2 border-b border-black/10 pb-4 dark:border-white/20">
-        {ADMIN_NAV.map((entry) => (
-          <Link
-            key={entry.href}
-            href={entry.href}
-            className="rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/20"
-          >
-            {entry.label}
-          </Link>
-        ))}
+      <nav className="flex flex-wrap gap-2 border-b border-border pb-4">
+        {ADMIN_NAV.map((entry) => {
+          const active =
+            entry.href === "/admin"
+              ? pathname === "/admin"
+              : pathname === entry.href || pathname.startsWith(`${entry.href}/`);
+          return (
+            <Link
+              key={entry.href}
+              href={entry.href}
+              className={`rounded border px-3 py-1.5 text-sm ${
+                active ? "border-accent bg-accent/15 text-accent" : "border-border text-foreground"
+              }`}
+            >
+              {entry.label}
+            </Link>
+          );
+        })}
       </nav>
       {children}
     </div>

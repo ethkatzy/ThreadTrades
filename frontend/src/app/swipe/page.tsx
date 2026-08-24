@@ -123,7 +123,7 @@ export default function SwipePage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
@@ -135,31 +135,27 @@ export default function SwipePage() {
     return (
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
         <h1 className="text-2xl font-semibold">Swipe</h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+        <p className="text-sm text-muted">
           Which of your items do you want to trade? You&apos;ll see the deck of what other people
           have to offer for it.
         </p>
 
         {myItemsError && <p className="text-sm text-red-600">{myItemsError}</p>}
-        {myItems === null && !myItemsError && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading your items…</p>
-        )}
+        {myItems === null && !myItemsError && <p className="text-sm text-muted">Loading your items…</p>}
         {myItems && myItems.length === 0 && (
           <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              You need to upload an item before you can swipe.
-            </p>
-            <Link href="/clothing-items/upload" className="text-sm underline">
+            <p className="text-sm text-muted">You need to upload an item before you can swipe.</p>
+            <Link href="/clothing-items/upload" className="text-sm text-accent underline">
               Upload an item
             </Link>
           </div>
         )}
         {availableItems && myItems && myItems.length > 0 && availableItems.length === 0 && (
           <div className="flex flex-col items-center gap-3 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted">
               All your items have already been swapped. Upload something new to keep swiping.
             </p>
-            <Link href="/clothing-items/upload" className="text-sm underline">
+            <Link href="/clothing-items/upload" className="text-sm text-accent underline">
               Upload an item
             </Link>
           </div>
@@ -171,9 +167,9 @@ export default function SwipePage() {
                 <button
                   type="button"
                   onClick={() => setOfferedItemId(item.id)}
-                  className="flex w-full flex-col gap-1 rounded border border-black/10 p-2 text-left dark:border-white/20"
+                  className="flex w-full flex-col gap-1 rounded border border-border p-2 text-left"
                 >
-                  <div className="relative aspect-square w-full overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+                  <div className="relative aspect-square w-full overflow-hidden rounded bg-surface">
                     <Image
                       src={`${API_BASE_URL}${item.imageUrl}`}
                       alt={item.name}
@@ -198,26 +194,24 @@ export default function SwipePage() {
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-6 px-4 py-10">
       <div className="flex w-full items-center justify-between">
         <h1 className="text-2xl font-semibold">Swipe</h1>
-        <button type="button" onClick={() => setOfferedItemId(null)} className="text-sm underline">
+        <button type="button" onClick={() => setOfferedItemId(null)} className="text-sm text-accent underline">
           Offering: {offeredItem.name} (change)
         </button>
       </div>
 
       {lastMatchItem && (
-        <p className="rounded bg-green-100 px-4 py-2 text-sm text-green-800 dark:bg-green-950 dark:text-green-300">
+        <p className="rounded bg-accent/15 px-4 py-2 text-sm text-accent">
           It&apos;s a match on &quot;{lastMatchItem.name}&quot;! 🎉
         </p>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {items === null && <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading items…</p>}
+      {items === null && <p className="text-sm text-muted">Loading items…</p>}
 
       {items !== null && !currentItem && (
         <div className="flex flex-col items-center gap-3 text-center">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You&apos;re all caught up! Check back later for more items.
-          </p>
-          <Link href="/" className="text-sm underline">
+          <p className="text-sm text-muted">You&apos;re all caught up! Check back later for more items.</p>
+          <Link href="/" className="text-sm text-accent underline">
             Back home
           </Link>
         </div>
@@ -234,9 +228,9 @@ export default function SwipePage() {
               transform: `translateX(${dragX}px) rotate(${dragX / 20}deg)`,
               transition: dragging ? "none" : "transform 0.2s ease",
             }}
-            className="flex w-full touch-none flex-col gap-3 rounded-lg border border-black/10 bg-background p-4 select-none dark:border-white/20"
+            className="flex w-full touch-none flex-col gap-3 rounded-lg border border-border bg-surface p-4 select-none"
           >
-            <div className="relative aspect-square w-full overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+            <div className="relative aspect-square w-full overflow-hidden rounded bg-background">
               <Image
                 src={`${API_BASE_URL}${currentItem.imageUrl}`}
                 alt={currentItem.name}
@@ -248,14 +242,12 @@ export default function SwipePage() {
             </div>
             <div>
               <h2 className="text-lg font-medium">{currentItem.name}</h2>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-muted">
                 {[currentItem.brand, currentItem.itemType, currentItem.clothingSize]
                   .filter(Boolean)
                   .join(" • ")}
               </p>
-              {currentItem.description && (
-                <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">{currentItem.description}</p>
-              )}
+              {currentItem.description && <p className="mt-2 text-sm text-muted">{currentItem.description}</p>}
             </div>
           </div>
 
@@ -272,7 +264,7 @@ export default function SwipePage() {
               type="button"
               onClick={() => handleSwipe("DISLIKE")}
               disabled={isSubmitting}
-              className="rounded border border-black/10 px-6 py-2 text-lg disabled:opacity-50 dark:border-white/20"
+              className="rounded border border-border px-6 py-2 text-lg text-foreground hover:bg-surface disabled:opacity-50"
               aria-label="Pass"
             >
               ✕
@@ -281,7 +273,7 @@ export default function SwipePage() {
               type="button"
               onClick={() => handleSwipe("LIKE")}
               disabled={isSubmitting}
-              className="rounded bg-foreground px-6 py-2 text-lg text-background disabled:opacity-50"
+              className="rounded bg-accent px-6 py-2 text-lg text-accent-foreground hover:bg-accent/90 disabled:opacity-50"
               aria-label="Like"
             >
               ♥

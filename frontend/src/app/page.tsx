@@ -9,15 +9,10 @@ import { listMatches, type Match } from "@/lib/api/matches";
 import { listMessages, type Message } from "@/lib/api/messages";
 import { getSwipeDeck } from "@/lib/api/swipes";
 import { getSwap, listSwapHistory, type Swap, type SwapHistoryEntry } from "@/lib/api/swaps";
+import { Card } from "@/components/Card";
+import { ButtonLink } from "@/components/Button";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
-const ENTRY_POINTS = [
-  { href: "/clothing-items/upload", label: "Upload an item" },
-  { href: "/swipe", label: "Swipe" },
-  { href: "/matches", label: "Matches" },
-  { href: "/profile", label: "Profile" },
-];
 
 type DashboardMatch = {
   match: Match;
@@ -28,7 +23,7 @@ type DashboardMatch = {
 function ItemThumbnail({ item, size = 80 }: { item: ClothingItem; size?: number }) {
   return (
     <div
-      className="relative shrink-0 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900"
+      className="relative shrink-0 overflow-hidden rounded border border-border bg-surface"
       style={{ width: size, height: size }}
     >
       <Image
@@ -43,7 +38,7 @@ function ItemThumbnail({ item, size = 80 }: { item: ClothingItem; size?: number 
 }
 
 export default function HomePage() {
-  const { token, user, isLoading, logout } = useAuth();
+  const { token, user, isLoading } = useAuth();
 
   const [items, setItems] = useState<ClothingItem[] | null>(null);
   const [itemsError, setItemsError] = useState<string | null>(null);
@@ -129,7 +124,7 @@ export default function HomePage() {
   if (isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
@@ -138,19 +133,16 @@ export default function HomePage() {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
         <h1 className="text-3xl font-semibold">ThreadTrades</h1>
-        <p className="max-w-sm text-zinc-600 dark:text-zinc-400">
+        <p className="max-w-sm text-muted">
           Swap clothes with people nearby. Log in or create an account to get started.
         </p>
         <div className="flex gap-3">
-          <Link href="/login" className="rounded bg-foreground px-4 py-2 text-background">
+          <ButtonLink href="/login" variant="primary">
             Log in
-          </Link>
-          <Link
-            href="/register"
-            className="rounded border border-black/10 px-4 py-2 dark:border-white/20"
-          >
+          </ButtonLink>
+          <ButtonLink href="/register" variant="secondary">
             Register
-          </Link>
+          </ButtonLink>
         </div>
       </div>
     );
@@ -171,32 +163,7 @@ export default function HomePage() {
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 px-4 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Welcome, {user.name}</h1>
-        <button onClick={logout} className="text-sm underline">
-          Log out
-        </button>
-      </div>
-
-      <nav className="flex flex-wrap gap-3">
-        {ENTRY_POINTS.map((entry) => (
-          <Link
-            key={entry.href}
-            href={entry.href}
-            className="rounded border border-black/10 px-4 py-2 text-sm dark:border-white/20"
-          >
-            {entry.label}
-          </Link>
-        ))}
-        {user.role === "ADMIN" && (
-          <Link
-            href="/admin"
-            className="rounded border border-black/10 px-4 py-2 text-sm dark:border-white/20"
-          >
-            Admin
-          </Link>
-        )}
-      </nav>
+      <h1 className="text-2xl font-semibold">Welcome, {user.name}</h1>
 
       {dashboardError && <p className="text-sm text-red-600">{dashboardError}</p>}
 
@@ -205,16 +172,13 @@ export default function HomePage() {
           <h2 className="mb-3 text-lg font-medium">Swaps needing your action</h2>
           <ul className="flex flex-col gap-3">
             {needsAction.map(({ match, swap }) => (
-              <li
-                key={match.id}
-                className="flex items-center gap-4 rounded-lg border border-black/10 p-3 dark:border-white/20"
-              >
+              <Card as="li" key={match.id} className="flex items-center gap-4">
                 <ItemThumbnail item={match.myItem} />
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{match.otherUserName}</p>
                   <Link
                     href={`/matches/${match.id}`}
-                    className="block truncate text-sm text-zinc-600 underline dark:text-zinc-400"
+                    className="block truncate text-sm text-muted underline"
                   >
                     {swap.otherAccepted
                       ? `${match.otherUserName} wants to complete this swap`
@@ -222,7 +186,7 @@ export default function HomePage() {
                   </Link>
                 </div>
                 <ItemThumbnail item={match.otherItem} />
-              </li>
+              </Card>
             ))}
           </ul>
         </section>
@@ -230,29 +194,21 @@ export default function HomePage() {
 
       <section>
         <h2 className="mb-1 text-lg font-medium">Recently active</h2>
-        <p className="mb-3 text-xs text-zinc-500 dark:text-zinc-500">
-          Matches with the newest activity, not necessarily unread.
-        </p>
         {dashboardMatches === null && !dashboardError && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+          <p className="text-sm text-muted">Loading…</p>
         )}
         {dashboardMatches !== null && recentThreads.length === 0 && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No conversations yet.</p>
+          <p className="text-sm text-muted">No conversations yet.</p>
         )}
         {recentThreads.length > 0 && (
           <ul className="flex flex-col gap-3">
             {recentThreads.map(({ match, lastMessage }) => (
-              <li
-                key={match.id}
-                className="rounded-lg border border-black/10 p-3 dark:border-white/20"
-              >
+              <Card as="li" key={match.id}>
                 <Link href={`/matches/${match.id}`} className="flex flex-col gap-1">
                   <span className="font-medium">{match.otherUserName}</span>
-                  <span className="truncate text-sm text-zinc-600 dark:text-zinc-400">
-                    {lastMessage.content}
-                  </span>
+                  <span className="truncate text-sm text-muted">{lastMessage.content}</span>
                 </Link>
-              </li>
+              </Card>
             ))}
           </ul>
         )}
@@ -261,28 +217,23 @@ export default function HomePage() {
       <section>
         <h2 className="mb-3 text-lg font-medium">Recently completed swaps</h2>
         {historyError && <p className="text-sm text-red-600">{historyError}</p>}
-        {history === null && !historyError && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
-        )}
+        {history === null && !historyError && <p className="text-sm text-muted">Loading…</p>}
         {history !== null && recentCompleted.length === 0 && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">No completed swaps yet.</p>
+          <p className="text-sm text-muted">No completed swaps yet.</p>
         )}
         {recentCompleted.length > 0 && (
           <ul className="flex flex-col gap-3">
             {recentCompleted.map((entry) => (
-              <li
-                key={entry.matchId}
-                className="flex items-center gap-4 rounded-lg border border-black/10 p-3 dark:border-white/20"
-              >
+              <Card as="li" key={entry.matchId} className="flex items-center gap-4">
                 <ItemThumbnail item={entry.myItem} />
                 <Link href={`/matches/${entry.matchId}`} className="min-w-0 flex-1">
                   <span className="block font-medium">{entry.otherUserName}</span>
-                  <span className="block truncate text-sm text-zinc-600 dark:text-zinc-400">
+                  <span className="block truncate text-sm text-muted">
                     {entry.myItem.name} for {entry.otherItem.name}
                   </span>
                 </Link>
                 <ItemThumbnail item={entry.otherItem} />
-              </li>
+              </Card>
             ))}
           </ul>
         )}
@@ -296,25 +247,21 @@ export default function HomePage() {
             {swipeTeaser.map((item) => (
               <ItemThumbnail key={item.id} item={item} size={64} />
             ))}
-            <span className="text-sm underline">See more</span>
+            <span className="text-sm text-accent underline">See more</span>
           </Link>
         )}
         {!swipeTeaserError && items !== null && !hasAvailableItem && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Upload an item to start swiping.
-            </p>
-            <Link href="/clothing-items/upload" className="text-sm underline">
+            <p className="text-sm text-muted">Upload an item to start swiping.</p>
+            <Link href="/clothing-items/upload" className="text-sm text-accent underline">
               Upload an item
             </Link>
           </div>
         )}
         {!swipeTeaserError && swipeTeaserOfferedItem && swipeTeaser && swipeTeaser.length === 0 && (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Nothing new to swipe on right now — check back soon.
-            </p>
-            <Link href="/swipe" className="text-sm underline">
+            <p className="text-sm text-muted">Nothing new to swipe on right now — check back soon.</p>
+            <Link href="/swipe" className="text-sm text-accent underline">
               Go to swipe
             </Link>
           </div>
@@ -325,16 +272,14 @@ export default function HomePage() {
         <h2 className="mb-3 text-lg font-medium">Your items</h2>
         {itemsError && <p className="text-sm text-red-600">{itemsError}</p>}
         {items && items.length === 0 && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            You haven&apos;t uploaded any items yet.
-          </p>
+          <p className="text-sm text-muted">You haven&apos;t uploaded any items yet.</p>
         )}
         {items && items.length > 0 && (
           <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
             {items.map((item) => (
               <li key={item.id} className="flex flex-col gap-1">
                 <Link href={`/clothing-items/${item.id}`}>
-                  <div className="relative aspect-square w-full overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+                  <div className="relative aspect-square w-full overflow-hidden rounded bg-surface">
                     <Image
                       src={`${API_BASE_URL}${item.imageUrl}`}
                       alt={item.name}

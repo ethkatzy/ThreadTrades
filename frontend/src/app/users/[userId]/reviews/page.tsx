@@ -20,14 +20,14 @@ export default function UserReviewsPage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-10">
-      <button type="button" onClick={() => router.back()} className="self-start text-sm underline">
+      <button type="button" onClick={() => router.back()} className="self-start text-sm text-accent underline">
         ← Back
       </button>
 

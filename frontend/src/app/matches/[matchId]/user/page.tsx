@@ -11,7 +11,7 @@ import { getMatchOtherUser } from "@/lib/api/matches";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const tabClassName = (active: boolean) =>
-  `pb-2 text-sm font-medium ${active ? "border-b-2 border-foreground" : "text-zinc-500 dark:text-zinc-400"}`;
+  `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
 
 export default function MatchedUserProfilePage() {
   const { token, user, isLoading } = useAuth();
@@ -43,25 +43,23 @@ export default function MatchedUserProfilePage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-10">
-      <button type="button" onClick={() => router.back()} className="self-start text-sm underline">
+      <button type="button" onClick={() => router.back()} className="self-start text-sm text-accent underline">
         ← Back
       </button>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {!profile && !error && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading profile…</p>
-      )}
+      {!profile && !error && <p className="text-sm text-muted">Loading profile…</p>}
 
       {profile && (
         <>
-          <div className="flex gap-4 border-b border-black/10 dark:border-white/20">
+          <div className="flex gap-4 border-b border-border">
             <button type="button" onClick={() => setActiveTab("profile")} className={tabClassName(activeTab === "profile")}>
               Profile
             </button>
@@ -72,7 +70,7 @@ export default function MatchedUserProfilePage() {
 
           {activeTab === "profile" && (
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="relative h-24 w-24 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-24 w-24 overflow-hidden rounded-full bg-surface">
                 {profile.profilePictureUrl && (
                   <Image
                     src={`${API_BASE_URL}${profile.profilePictureUrl}`}
@@ -85,7 +83,7 @@ export default function MatchedUserProfilePage() {
               </div>
               <div>
                 <h1 className="text-xl font-semibold">{profile.name}</h1>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">@{profile.username}</p>
+                <p className="text-sm text-muted">@{profile.username}</p>
               </div>
               {profile.bio && <p className="max-w-sm text-sm">{profile.bio}</p>}
             </div>

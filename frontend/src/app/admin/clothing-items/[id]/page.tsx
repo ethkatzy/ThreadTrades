@@ -7,6 +7,8 @@ import { useAuth } from "@/components/AuthProvider";
 import { getAdminClothingItem, removeClothingItem } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import type { ClothingItem } from "@/lib/api/clothingItems";
+import { Button } from "@/components/Button";
+import { StatusBadge, itemStatusTone } from "@/components/StatusBadge";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
@@ -48,39 +50,36 @@ export default function AdminClothingItemDetailPage() {
     return <p className="text-sm text-red-600">{error}</p>;
   }
   if (!item) {
-    return <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>;
+    return <p className="text-sm text-muted">Loading…</p>;
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
-        <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+        <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded bg-surface">
           <Image src={`${API_BASE_URL}${item.imageUrl}`} alt={item.name} fill sizes="128px" className="object-cover" />
         </div>
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-          <dt className="text-zinc-600 dark:text-zinc-400">Name</dt>
+        <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 text-sm">
+          <dt className="text-muted">Name</dt>
           <dd>{item.name}</dd>
-          <dt className="text-zinc-600 dark:text-zinc-400">Owner</dt>
+          <dt className="text-muted">Owner</dt>
           <dd>{item.ownerId}</dd>
-          <dt className="text-zinc-600 dark:text-zinc-400">Status</dt>
-          <dd>{item.status}</dd>
-          <dt className="text-zinc-600 dark:text-zinc-400">Type</dt>
+          <dt className="text-muted">Status</dt>
+          <dd>
+            <StatusBadge label={item.status} tone={itemStatusTone(item.status)} />
+          </dd>
+          <dt className="text-muted">Type</dt>
           <dd>{item.itemType}</dd>
-          <dt className="text-zinc-600 dark:text-zinc-400">Created</dt>
+          <dt className="text-muted">Created</dt>
           <dd>{new Date(item.createdAt).toLocaleString()}</dd>
         </dl>
       </div>
 
       {actionError && <p className="text-sm text-red-600">{actionError}</p>}
       {item.status !== "REMOVED" && (
-        <button
-          type="button"
-          disabled={isSubmitting}
-          onClick={handleRemove}
-          className="w-fit rounded border border-black/10 px-4 py-2 text-sm disabled:opacity-50 dark:border-white/20"
-        >
+        <Button type="button" variant="secondary" disabled={isSubmitting} onClick={handleRemove} className="w-fit">
           Remove item
-        </button>
+        </Button>
       )}
     </div>
   );

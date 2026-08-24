@@ -8,15 +8,13 @@ import { useAuth } from "@/components/AuthProvider";
 import { UserReviews } from "@/components/UserReviews";
 import { ApiError } from "@/lib/api/client";
 import { listSwapHistory, type SwapHistoryEntry } from "@/lib/api/swaps";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-const inputClassName = "rounded border border-black/10 px-3 py-2 dark:border-white/20";
+const inputClassName = "rounded border border-border px-3 py-2";
 const tabClassName = (active: boolean) =>
-  `pb-2 text-sm font-medium ${
-    active
-      ? "border-b-2 border-foreground"
-      : "text-zinc-500 dark:text-zinc-400"
-  }`;
+  `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
 
 export default function ProfilePage() {
   const { user, token, isLoading, updateProfile } = useAuth();
@@ -107,7 +105,7 @@ export default function ProfilePage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
@@ -120,17 +118,13 @@ export default function ProfilePage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">Your profile</h1>
           {activeTab === "profile" && (
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="rounded bg-foreground px-4 py-2 text-sm text-background"
-            >
+            <Button type="button" onClick={() => setIsEditing(true)}>
               Edit
-            </button>
+            </Button>
           )}
         </div>
 
-        <div className="flex gap-4 border-b border-black/10 dark:border-white/20">
+        <div className="flex gap-4 border-b border-border">
           <button type="button" onClick={() => setActiveTab("profile")} className={tabClassName(activeTab === "profile")}>
             Profile
           </button>
@@ -146,10 +140,10 @@ export default function ProfilePage() {
 
         {activeTab === "profile" && (
           <>
-            {saved && <p className="text-sm text-green-700 dark:text-green-400">Saved.</p>}
+            {saved && <p className="text-sm text-accent">Saved.</p>}
 
             <div className="flex flex-col items-center gap-4 text-center">
-              <div className="relative h-24 w-24 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
+              <div className="relative h-24 w-24 overflow-hidden rounded-full bg-surface">
                 {user.profilePictureUrl && (
                   <Image
                     src={`${API_BASE_URL}${user.profilePictureUrl}`}
@@ -162,7 +156,7 @@ export default function ProfilePage() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold">{user.name}</h2>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">@{user.username}</p>
+                <p className="text-sm text-muted">@{user.username}</p>
               </div>
               {user.bio && <p className="max-w-sm text-sm">{user.bio}</p>}
             </div>
@@ -173,19 +167,16 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-4">
             {historyError && <p className="text-sm text-red-600">{historyError}</p>}
             {history === null && !historyError && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading swap history…</p>
+              <p className="text-sm text-muted">Loading swap history…</p>
             )}
             {history && history.length === 0 && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">No completed swaps yet.</p>
+              <p className="text-sm text-muted">No completed swaps yet.</p>
             )}
             {history && history.length > 0 && (
               <ul className="flex flex-col gap-4">
                 {history.map((entry) => (
-                  <li
-                    key={entry.matchId}
-                    className="flex items-center gap-4 rounded-lg border border-black/10 p-3 dark:border-white/20"
-                  >
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+                  <Card as="li" key={entry.matchId} className="flex items-center gap-4">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-surface">
                       <Image
                         src={`${API_BASE_URL}${entry.myItem.imageUrl}`}
                         alt={entry.myItem.name}
@@ -198,15 +189,13 @@ export default function ProfilePage() {
                       <p>
                         Swapped your <span className="font-medium">{entry.myItem.name}</span> for{" "}
                         <span className="font-medium">{entry.otherItem.name}</span> with{" "}
-                        <Link href={`/matches/${entry.matchId}/user`} className="underline">
+                        <Link href={`/matches/${entry.matchId}/user`} className="text-accent underline">
                           {entry.otherUserName}
                         </Link>
                       </p>
-                      <p className="text-zinc-600 dark:text-zinc-400">
-                        {new Date(entry.completedAt).toLocaleDateString()}
-                      </p>
+                      <p className="text-muted">{new Date(entry.completedAt).toLocaleDateString()}</p>
                     </div>
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded bg-zinc-100 dark:bg-zinc-900">
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-surface">
                       <Image
                         src={`${API_BASE_URL}${entry.otherItem.imageUrl}`}
                         alt={entry.otherItem.name}
@@ -215,7 +204,7 @@ export default function ProfilePage() {
                         className="object-cover"
                       />
                     </div>
-                  </li>
+                  </Card>
                 ))}
               </ul>
             )}
@@ -230,7 +219,7 @@ export default function ProfilePage() {
       <h1 className="text-2xl font-semibold">Edit profile</h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex items-center gap-4">
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-900">
+          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full bg-surface">
             {avatarSrc && (
               // eslint-disable-next-line @next/next/no-img-element -- blob: preview URLs can't go through next/image
               <img src={avatarSrc} alt={user.name} className="h-full w-full object-cover" />
@@ -277,21 +266,12 @@ export default function ProfilePage() {
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Saving…" : "Save changes"}
-          </button>
-          <button
-            type="button"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            className="rounded border border-black/10 px-4 py-2 disabled:opacity-50 dark:border-white/20"
-          >
+          </Button>
+          <Button type="button" variant="secondary" onClick={handleCancel} disabled={isSubmitting}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

@@ -38,23 +38,23 @@ export default function ClothingItemDetailPage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-10">
-      <button type="button" onClick={() => router.back()} className="self-start text-sm underline">
+      <button type="button" onClick={() => router.back()} className="self-start text-sm text-accent underline">
         ← Back
       </button>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {!error && !item && <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading item…</p>}
+      {!error && !item && <p className="text-sm text-muted">Loading item…</p>}
 
       {item && (
         <div className="flex flex-col gap-3">
-          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-900">
+          <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-surface">
             <Image
               src={`${API_BASE_URL}${item.imageUrl}`}
               alt={item.name}
@@ -65,17 +65,17 @@ export default function ClothingItemDetailPage() {
           </div>
           <div>
             <h1 className="text-xl font-semibold">{item.name}</h1>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted">
               {[item.brand, item.itemType, item.clothingSize, item.colour].filter(Boolean).join(" • ")}
             </p>
           </div>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <dt className="text-zinc-600 dark:text-zinc-400">Condition</dt>
+            <dt className="text-muted">Condition</dt>
             <dd>{item.condition}</dd>
-            <dt className="text-zinc-600 dark:text-zinc-400">Gender</dt>
+            <dt className="text-muted">Gender</dt>
             <dd>{item.gender}</dd>
           </dl>
-          {item.description && <p className="text-sm text-zinc-600 dark:text-zinc-400">{item.description}</p>}
+          {item.description && <p className="text-sm text-muted">{item.description}</p>}
         </div>
       )}
     </div>

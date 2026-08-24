@@ -5,6 +5,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { uploadClothingItem } from "@/lib/api/clothingItems";
+import { Button } from "@/components/Button";
 
 const CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"] as const;
 
@@ -23,7 +24,7 @@ const GENDERS = [
   { value: "KIDS", label: "Kids" },
 ] as const;
 
-const inputClassName = "rounded border border-black/10 px-3 py-2 dark:border-white/20";
+const inputClassName = "rounded border border-border px-3 py-2";
 // <select> renders its dropdown popup as a separate browser-native layer that
 // doesn't inherit the page's dark background, so without an explicit
 // background/text color here the popup falls back to light-on-white and only
@@ -94,7 +95,7 @@ export default function UploadClothingItemPage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
@@ -212,13 +213,9 @@ export default function UploadClothingItemPage() {
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
-        >
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? "Uploading…" : "Upload item"}
-        </button>
+        </Button>
       </form>
     </div>
   );

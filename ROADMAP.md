@@ -34,7 +34,7 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 
 | #     | Feature                    | What                                                                                                                                                                    |
 |-------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| -     | A proper UI                | The current skeleton UI is extremely basic. Add some more colour and pop, as well as easier navigation (eg navbar) so you can access all main pages from any other page |
+| -     | A proper UI                | ✅ Done — teal accent theme (`globals.css` tokens: `--accent`, `--surface`, `--muted`, `--border`), a global auth-aware `NavBar` on every page, shared `Card`/`Button`/`StatusBadge` components replacing ~140 repeated literal Tailwind classes, and colour-coded status badges for swap/item status, banned flag, and role (see `frontend/src/components/`) |
  
 ---
 
@@ -251,6 +251,38 @@ they bite again.
   log, yet stale output. If a change to a long-running dev container's route "isn't
   showing up" with no error anywhere, restart the frontend container before assuming
   the code itself is wrong.
+- **Appending a conflicting Tailwind utility via a trailing `className` string does not
+  reliably override a component's baked-in classes.** The new `Button` component
+  originally hardcoded `px-4 py-2 text-sm`; call sites that tried to shrink it for
+  inline chip-style buttons (e.g. `className="px-3 py-1.5 text-xs"` appended after the
+  component's own classes) had no guarantee of winning, because Tailwind's generated
+  CSS order is based on when each utility was first encountered across the whole build,
+  not on where the class appears in a given element's `className` string — DOM/string
+  order does not imply cascade order for same-specificity utility classes. Fixed by
+  giving `Button`/`ButtonLink` (`frontend/src/components/Button.tsx`) an explicit
+  `size` prop (`"md" | "sm"`) with a size→class lookup table, so the whole
+  padding/text-size declaration swaps as one unit instead of trying to override
+  individual utilities. Any future component with a "default" size/spacing baked into
+  its base classes should take a `size`/variant prop for known deviations rather than
+  expecting an appended `className` override to win — and where a call site's need is
+  a one-off (e.g. the swipe deck's large circular Like/Pass buttons), it's safer to not
+  route it through the shared component at all than to fight the cascade.
+- **Two adjacent elements both styled with the same theme-token background can render
+  as an invisible box.** After introducing a `--surface` token (one step lighter than
+  `--background`) for both card containers (`Card`) and item-thumbnail placeholders,
+  wrapping a thumbnail inside a card made the thumbnail's placeholder background
+  disappear — same `bg-surface` value on both, zero visible edge, so a slow-loading or
+  broken image looked like empty space rather than a loading placeholder (caught
+  visually in the browser, not by tests/lint/build, none of which render two nested
+  same-color boxes). Fixed by adding `border border-border` to
+  `frontend/src/app/page.tsx`'s `ItemThumbnail` and the equivalent thumbnails in
+  `frontend/src/app/profile/page.tsx`'s swap-history list (both nest inside `Card`);
+  `frontend/src/app/matches/page.tsx` instead swaps the nested thumbnail to
+  `bg-background` since it's always inside a `Card` there. Whenever a themed
+  placeholder/avatar box is nested inside another element using the same background
+  token, give the inner box a border (or a contrasting token) rather than assuming the
+  two surfaces will read as distinct — check this visually, since nothing else catches
+  it.
 
 ## 4. Further changes
 * Documentation

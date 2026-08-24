@@ -7,6 +7,7 @@ import { Pagination } from "@/components/Pagination";
 import { listAdminSwaps, type AdminSwap } from "@/lib/api/admin";
 import type { PagedResponse } from "@/lib/api/admin";
 import type { SwapStatus } from "@/lib/api/swaps";
+import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 const STATUS_OPTIONS: Array<SwapStatus | ""> = ["", "PENDING", "ACCEPTED", "REJECTED"];
 
@@ -39,7 +40,7 @@ export default function AdminSwapsPage() {
             setPage(0);
             setStatus(event.target.value as SwapStatus | "");
           }}
-          className="rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+          className="rounded border border-border bg-transparent px-3 py-1.5 text-sm"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option} value={option} className="bg-white text-black">
@@ -49,9 +50,7 @@ export default function AdminSwapsPage() {
         </select>
       </div>
       {status === "PENDING" && (
-        <p className="text-xs text-zinc-600 dark:text-zinc-400">
-          Sorted oldest-first so stuck swaps surface at the top.
-        </p>
+        <p className="text-xs text-muted">Sorted oldest-first so stuck swaps surface at the top.</p>
       )}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -60,7 +59,7 @@ export default function AdminSwapsPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10 text-zinc-600 dark:border-white/20 dark:text-zinc-400">
+              <tr className="border-b border-border text-muted">
                 <th className="py-2 pr-4">Match</th>
                 <th className="py-2 pr-4">Status</th>
                 <th className="py-2">Last updated</th>
@@ -68,19 +67,21 @@ export default function AdminSwapsPage() {
             </thead>
             <tbody>
               {result.content.map((swap) => (
-                <tr key={swap.id} className="border-b border-black/5 dark:border-white/10">
+                <tr key={swap.id} className="border-b border-border/50">
                   <td className="py-2 pr-4">
-                    <Link href={`/admin/swaps/${swap.id}`} className="underline">
+                    <Link href={`/admin/swaps/${swap.id}`} className="text-accent underline">
                       Match #{swap.matchId}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4">{swap.status}</td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge label={swap.status} tone={swapStatusTone(swap.status)} />
+                  </td>
                   <td className="py-2">{new Date(swap.updatedAt).toLocaleString()}</td>
                 </tr>
               ))}
               {result.content.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-4 text-center text-zinc-600 dark:text-zinc-400">
+                  <td colSpan={3} className="py-4 text-center text-muted">
                     No swaps found.
                   </td>
                 </tr>

@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { getAdminMatch, type AdminMatch } from "@/lib/api/admin";
+import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminMatchDetailPage() {
   const { token } = useAuth();
@@ -27,7 +28,7 @@ export default function AdminMatchDetailPage() {
     return <p className="text-sm text-red-600">{error}</p>;
   }
   if (!match) {
-    return <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>;
+    return <p className="text-sm text-muted">Loading…</p>;
   }
 
   return (
@@ -38,21 +39,24 @@ export default function AdminMatchDetailPage() {
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
           <p className="font-medium">{match.userAUsername}</p>
-          <p className="text-zinc-600 dark:text-zinc-400">offered {match.itemA.name}</p>
+          <p className="text-muted">offered {match.itemA.name}</p>
         </div>
         <div>
           <p className="font-medium">{match.userBUsername}</p>
-          <p className="text-zinc-600 dark:text-zinc-400">offered {match.itemB.name}</p>
+          <p className="text-muted">offered {match.itemB.name}</p>
         </div>
       </div>
       <p className="text-sm">Matched on {new Date(match.createdAt).toLocaleString()}</p>
-      <p className="text-sm">
-        Swap status: {match.swapStatus ?? "No swap yet"}
+      <p className="flex items-center gap-2 text-sm">
+        Swap status:{" "}
+        <StatusBadge
+          label={match.swapStatus ?? "No swap yet"}
+          tone={match.swapStatus ? swapStatusTone(match.swapStatus) : "neutral"}
+        />
         {match.swapId && (
           <>
-            {" "}
             —{" "}
-            <Link href={`/admin/swaps/${match.swapId}`} className="underline">
+            <Link href={`/admin/swaps/${match.swapId}`} className="text-accent underline">
               view swap
             </Link>
           </>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { Button } from "@/components/Button";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -42,7 +43,7 @@ export default function RegisterPage() {
               autoComplete="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -52,7 +53,7 @@ export default function RegisterPage() {
               autoComplete="username"
               value={username}
               onChange={(event) => setUsername(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -63,7 +64,7 @@ export default function RegisterPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -75,21 +76,17 @@ export default function RegisterPage() {
               autoComplete="new-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Creating account…" : "Create account"}
-          </button>
+          </Button>
         </form>
         <p className="mt-4 text-sm">
           Already have an account?{" "}
-          <Link href="/login" className="underline">
+          <Link href="/login" className="text-accent underline">
             Log in
           </Link>
         </p>

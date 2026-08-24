@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminMatches, type AdminMatch, type PagedResponse } from "@/lib/api/admin";
+import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminMatchesPage() {
   const { token } = useAuth();
@@ -34,7 +35,7 @@ export default function AdminMatchesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10 text-zinc-600 dark:border-white/20 dark:text-zinc-400">
+              <tr className="border-b border-border text-muted">
                 <th className="py-2 pr-4">Users</th>
                 <th className="py-2 pr-4">Swap status</th>
                 <th className="py-2">Matched</th>
@@ -42,19 +43,24 @@ export default function AdminMatchesPage() {
             </thead>
             <tbody>
               {result.content.map((match) => (
-                <tr key={match.id} className="border-b border-black/5 dark:border-white/10">
+                <tr key={match.id} className="border-b border-border/50">
                   <td className="py-2 pr-4">
-                    <Link href={`/admin/matches/${match.id}`} className="underline">
+                    <Link href={`/admin/matches/${match.id}`} className="text-accent underline">
                       {match.userAUsername} &amp; {match.userBUsername}
                     </Link>
                   </td>
-                  <td className="py-2 pr-4">{match.swapStatus ?? "No swap yet"}</td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge
+                      label={match.swapStatus ?? "No swap yet"}
+                      tone={match.swapStatus ? swapStatusTone(match.swapStatus) : "neutral"}
+                    />
+                  </td>
                   <td className="py-2">{new Date(match.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
               {result.content.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="py-4 text-center text-zinc-600 dark:text-zinc-400">
+                  <td colSpan={3} className="py-4 text-center text-muted">
                     No matches found.
                   </td>
                 </tr>

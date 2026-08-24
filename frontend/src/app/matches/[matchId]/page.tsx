@@ -12,6 +12,11 @@ import { listMessages, sendMessage, type Message } from "@/lib/api/messages";
 import { submitReview } from "@/lib/api/reviews";
 import { acceptSwap, getSwap, rejectSwap, type Swap } from "@/lib/api/swaps";
 import { connectMatchSocket } from "@/lib/ws/matchSocket";
+import { Button } from "@/components/Button";
+import { Card } from "@/components/Card";
+import { Avatar } from "@/components/Avatar";
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export default function MatchThreadPage() {
   const { token, user, isLoading } = useAuth();
@@ -192,52 +197,66 @@ export default function MatchThreadPage() {
   if (isLoading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading…</p>
+        <p className="text-sm text-muted">Loading…</p>
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 py-6">
-      <div className="flex items-center justify-between border-b border-black/10 pb-3 dark:border-white/20">
-        <button type="button" onClick={() => router.back()} className="text-sm underline">
+      <div className="flex items-center justify-between border-b border-border pb-3">
+        <button type="button" onClick={() => router.back()} className="text-sm text-accent underline">
           ← Back
         </button>
         {match && (
-          <div className="text-right text-sm font-medium">
-            <p>
-              <Link href={`/matches/${matchId}/user`} className="underline">
-                {match.otherUserName}
-              </Link>{" "}
-              · {match.myItem.name} for {match.otherItem.name}
-            </p>
-            <RatingBadge
-              userId={match.otherUserId}
-              averageRating={match.otherUserAverageRating}
-              reviewCount={match.otherUserReviewCount}
-              className="justify-end font-normal"
-            />
+          <div className="flex items-center gap-3">
+            <div className="text-right text-sm font-medium">
+              <p>
+                <Link href={`/matches/${matchId}/user`} className="hover:underline">
+                  {match.otherUserName}
+                </Link>{" "}
+                · {match.myItem.name} for {match.otherItem.name}
+              </p>
+              <RatingBadge
+                userId={match.otherUserId}
+                averageRating={match.otherUserAverageRating}
+                reviewCount={match.otherUserReviewCount}
+                className="justify-end font-normal"
+              />
+            </div>
+            <Link href={`/matches/${matchId}/user`} className="shrink-0">
+              <Avatar
+                src={
+                  match.otherUserProfilePictureUrl
+                    ? `${API_BASE_URL}${match.otherUserProfilePictureUrl}`
+                    : null
+                }
+                name={match.otherUserName}
+                size={36}
+              />
+            </Link>
           </div>
         )}
       </div>
 
       {match && swap && (
-        <div className="rounded-lg border border-black/10 p-3 text-sm dark:border-white/20">
+        <Card className="text-sm">
           {swap.status === "ACCEPTED" && (
             <div className="flex flex-col gap-3">
-              <p className="font-medium text-green-700 dark:text-green-400">
+              <p className="font-medium text-accent">
                 Swap complete — {match.myItem.name} and {match.otherItem.name} are no longer up for grabs.
               </p>
 
               {!isReviewFormOpen && !swap.reviewed && (
-                <button
+                <Button
                   type="button"
+                  size="sm"
                   onClick={handleItemReceived}
                   disabled={isSubmittingReview}
-                  className="self-start rounded bg-foreground px-3 py-1.5 text-xs text-background disabled:opacity-50"
+                  className="self-start"
                 >
                   {isSubmittingReview ? "Marking as received…" : "Item received"}
-                </button>
+                </Button>
               )}
               {!isReviewFormOpen && !swap.reviewed && reviewError && (
                 <p className="text-sm text-red-600">{reviewError}</p>
@@ -249,25 +268,25 @@ export default function MatchThreadPage() {
                     You rated {match.otherUserName}{" "}
                     <span className="text-amber-500 dark:text-amber-400" aria-hidden="true">
                       {"★".repeat(swap.myReviewRating ?? 5)}
-                      <span className="text-zinc-400 dark:text-zinc-600">
-                        {"★".repeat(5 - (swap.myReviewRating ?? 5))}
-                      </span>
+                      <span className="text-muted">{"★".repeat(5 - (swap.myReviewRating ?? 5))}</span>
                     </span>
                   </p>
-                  {swap.myReviewComment && <p className="text-zinc-600 dark:text-zinc-400">“{swap.myReviewComment}”</p>}
+                  {swap.myReviewComment && <p className="text-muted">“{swap.myReviewComment}”</p>}
                   {swap.myReviewAutoGenerated && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-500">
-                      No review was left — this was an automatic rating.
-                    </p>
+                    <p className="text-xs text-muted">No review was left — this was an automatic rating.</p>
                   )}
-                  <button type="button" onClick={openReviewForm} className="self-start text-xs underline">
+                  <button
+                    type="button"
+                    onClick={openReviewForm}
+                    className="self-start text-xs text-accent underline"
+                  >
                     Edit review
                   </button>
                 </div>
               )}
 
               {isReviewFormOpen && (
-                <div className="flex flex-col gap-2 rounded border border-black/10 p-3 dark:border-white/20">
+                <div className="flex flex-col gap-2 rounded border border-border p-3">
                   <p className="text-sm">
                     {justAutoReviewed
                       ? `${match.otherUserName} was automatically given 5 stars. Want to set a specific rating instead?`
@@ -280,7 +299,7 @@ export default function MatchThreadPage() {
                         type="button"
                         onClick={() => setReviewRating(value)}
                         aria-label={`Rate ${value} star${value === 1 ? "" : "s"}`}
-                        className={value <= (reviewRating ?? 0) ? "text-amber-500" : "text-zinc-400 dark:text-zinc-600"}
+                        className={value <= (reviewRating ?? 0) ? "text-amber-500" : "text-muted"}
                       >
                         ★
                       </button>
@@ -292,34 +311,33 @@ export default function MatchThreadPage() {
                     value={reviewComment}
                     onChange={(event) => setReviewComment(event.target.value)}
                     placeholder="Say a little about why (optional)"
-                    className="rounded border border-black/10 px-3 py-2 text-sm dark:border-white/20"
+                    className="rounded border border-border px-3 py-2 text-sm"
                   />
                   {reviewError && <p className="text-sm text-red-600">{reviewError}</p>}
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
+                    <Button
                       type="button"
+                      size="sm"
                       onClick={handleSubmitReview}
                       disabled={isSubmittingReview || reviewRating === null}
-                      className="rounded bg-foreground px-3 py-1.5 text-xs text-background disabled:opacity-50"
                     >
                       Save
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      variant="secondary"
+                      size="sm"
                       onClick={closeReviewForm}
                       disabled={isSubmittingReview}
-                      className="rounded border border-black/10 px-3 py-1.5 text-xs disabled:opacity-50 dark:border-white/20"
                     >
                       {justAutoReviewed ? "Keep 5 stars" : "Cancel"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
             </div>
           )}
-          {swap.status === "REJECTED" && (
-            <p className="text-zinc-600 dark:text-zinc-400">This swap was declined.</p>
-          )}
+          {swap.status === "REJECTED" && <p className="text-muted">This swap was declined.</p>}
           {swap.status === "PENDING" && (
             <div className="flex items-center justify-between gap-3">
               <p>
@@ -331,39 +349,34 @@ export default function MatchThreadPage() {
               </p>
               <div className="flex shrink-0 gap-2">
                 {!swap.iAccepted && (
-                  <button
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => handleSwapDecision(acceptSwap)}
                     disabled={isDeciding}
-                    className="rounded bg-foreground px-3 py-1.5 text-xs text-background disabled:opacity-50"
                   >
                     Accept
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => handleSwapDecision(rejectSwap)}
                   disabled={isDeciding}
-                  className="rounded border border-black/10 px-3 py-1.5 text-xs disabled:opacity-50 dark:border-white/20"
                 >
                   Reject
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
       {swapError && <p className="text-sm text-red-600">{swapError}</p>}
 
       {error && <p className="text-sm text-red-600">{error}</p>}
-      {messages === null && !error && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">Loading messages…</p>
-      )}
-      {messages && messages.length === 0 && (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          No messages yet. Say hello!
-        </p>
-      )}
+      {messages === null && !error && <p className="text-sm text-muted">Loading messages…</p>}
+      {messages && messages.length === 0 && <p className="text-sm text-muted">No messages yet. Say hello!</p>}
 
       <div className="flex flex-1 flex-col gap-2">
         {messages?.map((message) => {
@@ -372,9 +385,7 @@ export default function MatchThreadPage() {
             <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
               <p
                 className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                  mine
-                    ? "bg-foreground text-background"
-                    : "bg-zinc-100 dark:bg-zinc-900"
+                  mine ? "bg-accent text-accent-foreground" : "bg-surface"
                 }`}
               >
                 {message.content}
@@ -385,21 +396,17 @@ export default function MatchThreadPage() {
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-black/10 pt-3 dark:border-white/20">
+      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border pt-3">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           placeholder={connected ? "Type a message…" : "Connecting…"}
           disabled={!connected || isSending}
-          className="flex-1 rounded border border-black/10 px-3 py-2 text-sm disabled:opacity-50 dark:border-white/20"
+          className="flex-1 rounded border border-border px-3 py-2 text-sm disabled:opacity-50"
         />
-        <button
-          type="submit"
-          disabled={!connected || isSending || !draft.trim()}
-          className="rounded bg-foreground px-4 py-2 text-sm text-background disabled:opacity-50"
-        >
+        <Button type="submit" disabled={!connected || isSending || !draft.trim()}>
           Send
-        </button>
+        </Button>
       </form>
     </div>
   );

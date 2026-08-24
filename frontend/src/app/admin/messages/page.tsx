@@ -6,6 +6,8 @@ import { Pagination } from "@/components/Pagination";
 import { deleteAdminMessage, listAdminMessages, type PagedResponse } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import type { Message } from "@/lib/api/messages";
+import { Card } from "@/components/Card";
+import { Button } from "@/components/Button";
 
 export default function AdminMessagesPage() {
   const { token } = useAuth();
@@ -54,7 +56,7 @@ export default function AdminMessagesPage() {
             setPage(0);
             setMatchId(event.target.value);
           }}
-          className="w-48 rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+          className="w-48 rounded border border-border bg-transparent px-3 py-1.5 text-sm"
         />
       </div>
 
@@ -64,29 +66,26 @@ export default function AdminMessagesPage() {
       {result && (
         <ul className="flex flex-col gap-2">
           {result.content.map((message) => (
-            <li
-              key={message.id}
-              className="flex items-start justify-between gap-3 rounded border border-black/10 p-3 text-sm dark:border-white/20"
-            >
+            <Card as="li" key={message.id} className="flex items-start justify-between gap-3 text-sm">
               <div className="min-w-0">
-                <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                <p className="text-xs text-muted">
                   Match #{message.matchId} · sender #{message.senderId} ·{" "}
                   {new Date(message.sentAt).toLocaleString()}
                 </p>
                 <p className="break-words">{message.content}</p>
               </div>
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => handleDelete(message.id)}
-                className="shrink-0 rounded border border-black/10 px-3 py-1 text-xs dark:border-white/20"
+                className="shrink-0"
               >
                 Delete
-              </button>
-            </li>
+              </Button>
+            </Card>
           ))}
-          {result.content.length === 0 && (
-            <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-400">No messages found.</p>
-          )}
+          {result.content.length === 0 && <p className="py-4 text-center text-sm text-muted">No messages found.</p>}
         </ul>
       )}
 

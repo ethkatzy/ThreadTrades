@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api/client";
+import { Button } from "@/components/Button";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -41,7 +42,7 @@ export default function LoginPage() {
               autoComplete="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
@@ -52,21 +53,17 @@ export default function LoginPage() {
               autoComplete="current-password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="rounded border border-black/10 px-3 py-2 dark:border-white/20"
+              className="rounded border border-border px-3 py-2"
             />
           </label>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="rounded bg-foreground px-4 py-2 text-background disabled:opacity-50"
-          >
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? "Logging in…" : "Log in"}
-          </button>
+          </Button>
         </form>
         <p className="mt-4 text-sm">
           No account?{" "}
-          <Link href="/register" className="underline">
+          <Link href="/register" className="text-accent underline">
             Register
           </Link>
         </p>

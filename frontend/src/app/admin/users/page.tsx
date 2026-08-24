@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminUsers, type AdminUser, type PagedResponse } from "@/lib/api/admin";
+import { StatusBadge, bannedTone, roleTone } from "@/components/StatusBadge";
 
 export default function AdminUsersPage() {
   const { token } = useAuth();
@@ -37,7 +38,7 @@ export default function AdminUsersPage() {
             setPage(0);
             setSearch(event.target.value);
           }}
-          className="rounded border border-black/10 px-3 py-1.5 text-sm dark:border-white/20 dark:bg-transparent"
+          className="rounded border border-border bg-transparent px-3 py-1.5 text-sm"
         />
       </div>
 
@@ -47,7 +48,7 @@ export default function AdminUsersPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-black/10 text-zinc-600 dark:border-white/20 dark:text-zinc-400">
+              <tr className="border-b border-border text-muted">
                 <th className="py-2 pr-4">Username</th>
                 <th className="py-2 pr-4">Email</th>
                 <th className="py-2 pr-4">Role</th>
@@ -57,21 +58,28 @@ export default function AdminUsersPage() {
             </thead>
             <tbody>
               {result.content.map((user) => (
-                <tr key={user.id} className="border-b border-black/5 dark:border-white/10">
+                <tr key={user.id} className="border-b border-border/50">
                   <td className="py-2 pr-4">
-                    <Link href={`/admin/users/${user.id}`} className="underline">
+                    <Link href={`/admin/users/${user.id}`} className="text-accent underline">
                       {user.username}
                     </Link>
                   </td>
                   <td className="py-2 pr-4">{user.email}</td>
-                  <td className="py-2 pr-4">{user.role}</td>
-                  <td className="py-2 pr-4">{user.banned ? "Banned" : "Active"}</td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge label={user.role} tone={roleTone(user.role)} />
+                  </td>
+                  <td className="py-2 pr-4">
+                    <StatusBadge
+                      label={user.banned ? "Banned" : "Active"}
+                      tone={bannedTone(user.banned)}
+                    />
+                  </td>
                   <td className="py-2">{new Date(user.createdAt).toLocaleDateString()}</td>
                 </tr>
               ))}
               {result.content.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-4 text-center text-zinc-600 dark:text-zinc-400">
+                  <td colSpan={5} className="py-4 text-center text-muted">
                     No users found.
                   </td>
                 </tr>
