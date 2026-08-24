@@ -82,6 +82,14 @@ export function unbanUser(token: string, id: number): Promise<AdminUser> {
   return apiFetch<AdminUser>(`/api/admin/users/${id}/unban`, { method: "POST" }, token);
 }
 
+export function promoteUser(token: string, id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/promote`, { method: "POST" }, token);
+}
+
+export function demoteUser(token: string, id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/demote`, { method: "POST" }, token);
+}
+
 export function listAdminClothingItems(
   token: string,
   page = 0,

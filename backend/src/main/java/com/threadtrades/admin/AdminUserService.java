@@ -55,6 +55,26 @@ public class AdminUserService {
         return AdminUserResponse.from(profile);
     }
 
+    @Transactional
+    public AdminUserResponse promote(Long profileId) {
+        UserProfile profile = profileFor(profileId);
+        profile.getAppUser().promoteToAdmin();
+        appUserRepository.save(profile.getAppUser());
+        return AdminUserResponse.from(profile);
+    }
+
+    @Transactional
+    public AdminUserResponse demote(Long profileId, Long actingAppUserId) {
+        UserProfile profile = profileFor(profileId);
+        AppUser appUser = profile.getAppUser();
+        if (appUser.getId().equals(actingAppUserId)) {
+            throw new CannotDemoteSelfException();
+        }
+        appUser.demoteToUser();
+        appUserRepository.save(appUser);
+        return AdminUserResponse.from(profile);
+    }
+
     private UserProfile profileFor(Long profileId) {
         return userProfileRepository.findById(profileId).orElseThrow(() -> new UserProfileNotFoundException(profileId));
     }

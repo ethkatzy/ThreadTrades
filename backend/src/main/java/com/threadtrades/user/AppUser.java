@@ -25,9 +25,6 @@ public class AppUser {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    // No public setter -- promotion to ADMIN is deliberately not an in-app code
-    // path (see ROADMAP.md), only a manual SQL update, so there's no HTTP
-    // surface that could ever grant it.
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role = Role.USER;
@@ -77,5 +74,13 @@ public class AppUser {
 
     public void unban() {
         this.banned = false;
+    }
+
+    public void promoteToAdmin() {
+        this.role = Role.ADMIN;
+    }
+
+    public void demoteToUser() {
+        this.role = Role.USER;
     }
 }

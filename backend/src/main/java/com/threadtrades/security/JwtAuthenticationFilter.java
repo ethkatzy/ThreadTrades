@@ -42,14 +42,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // indexed PK lookup to every authenticated request; the alternative
                 // (banned users keep working for up to a day) isn't an acceptable
                 // trade-off for a moderation action meant to be immediate.
-                boolean banned = appUserRepository
-                        .findById(user.appUserId())
-                        .map(AppUser::isBanned)
-                        .orElse(true);
-                if (banned) {
+                AppUser appUser = appUserRepository.findById(user.appUserId()).orElse(null);
+                if (appUser == null || appUser.isBanned()) {
                     return;
                 }
-                var authority = new SimpleGrantedAuthority("ROLE_" + user.role().name());
+                // The granted authority is built from this freshly-fetched row's role, not
+                // the JWT claim (user.role()) -- reuses the same lookup already done for the
+                // ban check, so an admin promotion/demotion takes effect on the very next
+                // request instead of waiting for the token to expire or the user to log in
+                // again, matching the immediacy the ban check already guarantees.
+                var authority = new SimpleGrantedAuthority("ROLE_" + appUser.getRole().name());
                 var authentication = new UsernamePasswordAuthenticationToken(user, null, List.of(authority));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             });

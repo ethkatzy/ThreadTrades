@@ -42,4 +42,14 @@ public class AdminUserController {
     public AdminUserResponse unban(@PathVariable Long id) {
         return adminUserService.unban(id);
     }
+
+    @PostMapping("/{id}/promote")
+    public AdminUserResponse promote(@PathVariable Long id) {
+        return adminUserService.promote(id);
+    }
+
+    @PostMapping("/{id}/demote")
+    public AdminUserResponse demote(@AuthenticationPrincipal AuthenticatedUser currentUser, @PathVariable Long id) {
+        return adminUserService.demote(id, currentUser.appUserId());
+    }
 }

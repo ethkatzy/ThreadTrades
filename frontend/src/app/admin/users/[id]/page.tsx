@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import { banUser, getAdminUser, unbanUser, type AdminUser } from "@/lib/api/admin";
+import { banUser, demoteUser, getAdminUser, promoteUser, unbanUser, type AdminUser } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/Button";
 import { StatusBadge, bannedTone, roleTone } from "@/components/StatusBadge";
@@ -42,6 +42,21 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  async function handleToggleRole() {
+    if (!token || !user) {
+      return;
+    }
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      setUser(user.role === "ADMIN" ? await demoteUser(token, userId) : await promoteUser(token, userId));
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : "Couldn't update this user.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
   if (error) {
     return <p className="text-sm text-red-600">{error}</p>;
   }
@@ -70,15 +85,26 @@ export default function AdminUserDetailPage() {
       </dl>
 
       {actionError && <p className="text-sm text-red-600">{actionError}</p>}
-      <Button
-        type="button"
-        variant="secondary"
-        disabled={isSubmitting}
-        onClick={handleToggleBan}
-        className="w-fit"
-      >
-        {user.banned ? "Unban user" : "Ban user"}
-      </Button>
+      <div className="flex gap-3">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isSubmitting}
+          onClick={handleToggleBan}
+          className="w-fit"
+        >
+          {user.banned ? "Unban user" : "Ban user"}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isSubmitting}
+          onClick={handleToggleRole}
+          className="w-fit"
+        >
+          {user.role === "ADMIN" ? "Remove admin" : "Make admin"}
+        </Button>
+      </div>
     </div>
   );
 }

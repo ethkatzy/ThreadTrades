@@ -27,8 +27,9 @@ class AdminUserControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    // Exercises the real production promotion path (ROADMAP.md: manual SQL, no
-    // in-app role-assignment endpoint) rather than any test-only backdoor.
+    // Bootstraps the *first* admin for a test: an in-app promote/demote endpoint
+    // now exists (see below), but it requires an already-authenticated admin
+    // caller, so there's no in-app way to create that first admin from nothing.
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -149,6 +150,59 @@ class AdminUserControllerTest {
 
         mockMvc.perform(
                         post("/api/admin/users/" + selfProfileId + "/ban").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminCanPromoteAndDemoteAUser() throws Exception {
+        register("admin3@example.com", "admin3");
+        String adminToken = promoteToAdmin("admin3@example.com");
+        Registered target = register("target3@example.com", "target3");
+
+        String targetJson = mockMvc.perform(
+                        get("/api/admin/users?query=target3").header("Authorization", "Bearer " + adminToken))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Number targetProfileId = JsonPath.read(targetJson, "$.content[0].id");
+
+        mockMvc.perform(post("/api/admin/users/" + targetProfileId + "/promote")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("ADMIN"));
+
+        // The promotion takes effect on the target's already-issued JWT immediately
+        // -- no re-login needed -- because JwtAuthenticationFilter re-derives the
+        // granted authority from the DB on every request rather than trusting the
+        // token's role claim.
+        mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + target.token()))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/admin/users/" + targetProfileId + "/demote")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("USER"));
+
+        // Demotion is just as immediate: the same still-valid JWT is now rejected
+        // by the admin-only endpoint without needing to expire or re-login.
+        mockMvc.perform(get("/api/admin/users").header("Authorization", "Bearer " + target.token()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminCannotDemoteTheirOwnAccount() throws Exception {
+        register("admin4@example.com", "admin4");
+        String adminToken = promoteToAdmin("admin4@example.com");
+
+        String selfJson = mockMvc.perform(
+                        get("/api/admin/users?query=admin4").header("Authorization", "Bearer " + adminToken))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Number selfProfileId = JsonPath.read(selfJson, "$.content[0].id");
+
+        mockMvc.perform(post("/api/admin/users/" + selfProfileId + "/demote")
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isBadRequest());
     }
 }

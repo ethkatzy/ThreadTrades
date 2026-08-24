@@ -1,6 +1,7 @@
 package com.threadtrades.common;
 
 import com.threadtrades.admin.CannotBanSelfException;
+import com.threadtrades.admin.CannotDemoteSelfException;
 import com.threadtrades.admin.InvalidSwapForceResolveException;
 import com.threadtrades.auth.BannedUserException;
 import com.threadtrades.auth.EmailAlreadyInUseException;
@@ -119,6 +120,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CannotBanSelfException.class)
     public ResponseEntity<ApiError> handleCannotBanSelf(CannotBanSelfException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler(CannotDemoteSelfException.class)
+    public ResponseEntity<ApiError> handleCannotDemoteSelf(CannotDemoteSelfException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
     }
 
