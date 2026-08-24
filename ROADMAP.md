@@ -18,7 +18,7 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 |---|---|---|---|
 | 1 | Registration / login | ✅ Done (backend JWT auth + frontend login/register pages) | Table stakes. |
 | 3+4 | Clothing upload — **one** unified path (object storage, replacing both the old BLOB and disk-file systems) | ✅ Done (`StorageService`, upload/list/get endpoints; frontend upload page) | Core loop start. Also where the old app's worst anti-pattern (two disconnected upload systems, AUDIT.md §9) gets fixed by construction — there will only ever be one path. |
-| 2 | Home dashboard | ✅ Done (minimal — your items + entry points) | Minimal version (your items + entry points) — needed as a landing page, not over-built. |
+| 2 | Home dashboard | ✅ Done (activity dashboard — swaps needing action, recently active threads, recently completed swaps, a swipe teaser, entry-point nav, and the your-items grid demoted to the bottom; see `frontend/src/app/page.tsx`) | Reordered around what's actionable/time-sensitive first once the core loop (matches, messaging, swap accept/reject) existed to surface — the original minimal version had nothing worth prioritizing yet. |
 | 5 | Swipe deck | ✅ Done (`GET /api/swipes/deck`, `POST /api/swipes`; frontend `/swipe` page with drag gesture + buttons) | Core loop. |
 | 6 | Match detection | ✅ Done (mutual-LIKE detection built atomically into `POST /api/swipes` via `SwipeService`/`ItemMatch`, not deferred — per AUDIT.md §10/§13) | Core loop — atomic server-side detection from day one, not bolted on later like the old app's dead async logic. |
 | 7 | Matches list | ✅ Done (`GET /api/matches`, viewer-relative `MatchResponse`; frontend `/matches` page) | Real matches, not the old hardcoded-minus-one-user hack. |
@@ -32,11 +32,10 @@ version of it nominally "working." Feature numbers refer to AUDIT.md §4.
 
 ### Deferred past v1
 
-| #     | Feature                    | What                                                                                                                                                                                                        |
-|-------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| -     | A proper UI                | The current skeleton UI is extremely basic. Add some more colour and pop, as well as easier navigation (eg navbar)                                                                                          |
- | -    | Update homepage | Workout what it should show|
-
+| #     | Feature                    | What                                                                                                                                                                    |
+|-------|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| -     | A proper UI                | The current skeleton UI is extremely basic. Add some more colour and pop, as well as easier navigation (eg navbar) so you can access all main pages from any other page |
+ 
 ---
 
 ## 1. Object / file storage backend
@@ -220,5 +219,39 @@ they bite again.
   (safe to point at `http://backend:8080` even though that only resolves inside the
   Compose network, since the raw string is only ever dereferenced server-side, never
   fetched by the browser directly) if the optimization is ever worth it.
+- **The homepage dashboard's "needs action" and "recently active" sections are built by
+  fetching `listMatches` once and then `Promise.all`-ing a `getSwap` + `listMessages`
+  call per match** — no backend endpoint returns matches pre-enriched with swap status
+  or last-message data, and there's no read/unread tracking anywhere in the schema
+  (confirmed by grep: no `read`/`readAt` field on `Message` or elsewhere), which is why
+  that section is labeled "Recently active" rather than "Unread." Fine at MVP match
+  volumes since each sub-fetch fails independently (a broken `getSwap` for one match
+  doesn't blank the page), but this is an N+1 fetch that will visibly slow the homepage
+  as match counts grow — revisit with a backend enrichment endpoint (e.g. `GET
+  /api/matches` returning embedded `swap`/`lastMessage` fields, or a dedicated
+  aggregate endpoint) if that happens, and consider adding real read-tracking then too.
+- **The homepage's swipe-deck teaser auto-picks the first `AVAILABLE` item from the
+  user's own clothing list as the `offeredItemId`** for `getSwipeDeck`, since the deck
+  endpoint requires one and there's no server-side concept of a "default" item to
+  swipe with. It's a client-side heuristic (first item in whatever order `GET
+  /api/clothing-items/mine` returns), not anything meaningful about user intent —
+  revisit if it turns out to pick a bad representative item once users have many items
+  (e.g. let the user pick, or rotate which item is teased).
+- **Turbopack's dev-server file watcher can silently stop picking up edits to an
+  already-compiled route on this Windows + Docker Compose bind-mount setup.** Editing
+  `frontend/src/app/page.tsx` from the host (outside the container) showed up correctly
+  inside the container's filesystem (`docker compose exec frontend cat ...` confirmed
+  it), and the container logged "Fast Refresh done," but the browser kept serving the
+  pre-edit page indefinitely — even after a hard reload (Ctrl+Shift+R). Only a full
+  `docker compose restart frontend` (forcing a fresh `next dev` boot, not just a
+  refresh) made the new code actually render. Root cause not confirmed (likely
+  Turbopack's persistent filesystem cache — note the earlier "Finished filesystem cache
+  database compaction" log line — disagreeing with a Windows bind-mount's file-change
+  events), but the symptom is misleading: no compile error, a real "Fast Refresh done"
+  log, yet stale output. If a change to a long-running dev container's route "isn't
+  showing up" with no error anywhere, restart the frontend container before assuming
+  the code itself is wrong.
 
-## 4. Documentation
+## 4. Further changes
+* Documentation
+* Mobile version
