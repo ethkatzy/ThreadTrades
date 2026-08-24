@@ -9,8 +9,8 @@ import { RatingBadge } from "@/components/RatingBadge";
 import { ApiError } from "@/lib/api/client";
 import { listMyClothingItems, type ClothingItem } from "@/lib/api/clothingItems";
 import { getSwipeDeck, recordSwipe, type SwipeDecision } from "@/lib/api/swipes";
+import { mediaUrl } from "@/lib/media";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const DRAG_THRESHOLD = 100;
 
 export default function SwipePage() {
@@ -171,7 +171,7 @@ export default function SwipePage() {
                 >
                   <div className="relative aspect-square w-full overflow-hidden rounded bg-surface">
                     <Image
-                      src={`${API_BASE_URL}${item.imageUrl}`}
+                      src={mediaUrl(item.imageUrl)}
                       alt={item.name}
                       fill
                       sizes="(max-width: 640px) 50vw, 33vw"
@@ -232,7 +232,7 @@ export default function SwipePage() {
           >
             <div className="relative aspect-square w-full overflow-hidden rounded bg-background">
               <Image
-                src={`${API_BASE_URL}${currentItem.imageUrl}`}
+                src={mediaUrl(currentItem.imageUrl)}
                 alt={currentItem.name}
                 fill
                 sizes="(max-width: 640px) 100vw, 448px"

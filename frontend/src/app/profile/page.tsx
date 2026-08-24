@@ -10,8 +10,8 @@ import { ApiError } from "@/lib/api/client";
 import { listSwapHistory, type SwapHistoryEntry } from "@/lib/api/swaps";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
+import { mediaUrl } from "@/lib/media";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const inputClassName = "rounded border border-border px-3 py-2";
 const tabClassName = (active: boolean) =>
   `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
@@ -110,7 +110,7 @@ export default function ProfilePage() {
     );
   }
 
-  const avatarSrc = previewUrl ?? (user.profilePictureUrl ? `${API_BASE_URL}${user.profilePictureUrl}` : null);
+  const avatarSrc = previewUrl ?? (user.profilePictureUrl ? mediaUrl(user.profilePictureUrl) : null);
 
   if (!isEditing) {
     return (
@@ -146,7 +146,7 @@ export default function ProfilePage() {
               <div className="relative h-24 w-24 overflow-hidden rounded-full bg-surface">
                 {user.profilePictureUrl && (
                   <Image
-                    src={`${API_BASE_URL}${user.profilePictureUrl}`}
+                    src={mediaUrl(user.profilePictureUrl)}
                     alt={user.name}
                     fill
                     sizes="96px"
@@ -178,7 +178,7 @@ export default function ProfilePage() {
                   <Card as="li" key={entry.matchId} className="flex items-center gap-4">
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-surface">
                       <Image
-                        src={`${API_BASE_URL}${entry.myItem.imageUrl}`}
+                        src={mediaUrl(entry.myItem.imageUrl)}
                         alt={entry.myItem.name}
                         fill
                         sizes="64px"
@@ -197,7 +197,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-surface">
                       <Image
-                        src={`${API_BASE_URL}${entry.otherItem.imageUrl}`}
+                        src={mediaUrl(entry.otherItem.imageUrl)}
                         alt={entry.otherItem.name}
                         fill
                         sizes="64px"

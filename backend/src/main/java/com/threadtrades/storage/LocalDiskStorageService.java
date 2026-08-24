@@ -7,26 +7,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Dev-only local-disk implementation of {@link StorageService} (ROADMAP.md
- * #1). Files are written under a UUID name -- never the client-supplied
- * filename -- both to avoid collisions and to close off path traversal via a
- * crafted filename (AUDIT.md #6.4).
+ * #1) -- files written here don't survive a redeploy or scale past one
+ * instance, so it's only active when {@code app.storage.provider} is
+ * "local" (the default). Files are written under a UUID name -- never the
+ * client-supplied filename -- both to avoid collisions and to close off path
+ * traversal via a crafted filename (AUDIT.md #6.4).
  */
 @Service
+@ConditionalOnProperty(prefix = "app.storage", name = "provider", havingValue = "local", matchIfMissing = true)
 public class LocalDiskStorageService implements StorageService {
-
-    private static final Map<String, String> EXTENSION_BY_CONTENT_TYPE = Map.of(
-            "image/jpeg", ".jpg",
-            "image/png", ".png",
-            "image/webp", ".webp",
-            "image/gif", ".gif");
 
     private final Path rootDirectory;
 
@@ -41,14 +38,7 @@ public class LocalDiskStorageService implements StorageService {
 
     @Override
     public String store(MultipartFile file) {
-        if (file.isEmpty()) {
-            throw new InvalidUploadException("Uploaded file is empty");
-        }
-        String extension = EXTENSION_BY_CONTENT_TYPE.get(file.getContentType());
-        if (extension == null) {
-            throw new UnsupportedImageTypeException(file.getContentType());
-        }
-
+        String extension = UploadValidation.extensionFor(file);
         String filename = UUID.randomUUID() + extension;
         Path target = rootDirectory.resolve(filename);
         try (InputStream in = file.getInputStream()) {

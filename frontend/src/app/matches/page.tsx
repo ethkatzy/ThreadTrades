@@ -8,8 +8,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { listMatches, type Match } from "@/lib/api/matches";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { mediaUrl } from "@/lib/media";
 
 export default function MatchesPage() {
   const { token, user, isLoading } = useAuth();
@@ -63,7 +62,7 @@ export default function MatchesPage() {
               <Link href={`/clothing-items/${match.otherItem.id}`} className="shrink-0">
                 <div className="relative h-20 w-20 overflow-hidden rounded bg-background">
                   <Image
-                    src={`${API_BASE_URL}${match.otherItem.imageUrl}`}
+                    src={mediaUrl(match.otherItem.imageUrl)}
                     alt={match.otherItem.name}
                     fill
                     sizes="80px"
@@ -79,7 +78,7 @@ export default function MatchesPage() {
                   <Avatar
                     src={
                       match.otherUserProfilePictureUrl
-                        ? `${API_BASE_URL}${match.otherUserProfilePictureUrl}`
+                        ? mediaUrl(match.otherUserProfilePictureUrl)
                         : null
                     }
                     name={match.otherUserName}
@@ -94,7 +93,7 @@ export default function MatchesPage() {
               <Link href={`/clothing-items/${match.myItem.id}`} className="shrink-0">
                 <div className="relative h-20 w-20 overflow-hidden rounded bg-background">
                   <Image
-                    src={`${API_BASE_URL}${match.myItem.imageUrl}`}
+                    src={mediaUrl(match.myItem.imageUrl)}
                     alt={match.myItem.name}
                     fill
                     sizes="80px"

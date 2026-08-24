@@ -11,8 +11,7 @@ import { getSwipeDeck } from "@/lib/api/swipes";
 import { getSwap, listSwapHistory, type Swap, type SwapHistoryEntry } from "@/lib/api/swaps";
 import { Card } from "@/components/Card";
 import { ButtonLink } from "@/components/Button";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { mediaUrl } from "@/lib/media";
 
 type DashboardMatch = {
   match: Match;
@@ -27,7 +26,7 @@ function ItemThumbnail({ item, size = 80 }: { item: ClothingItem; size?: number 
       style={{ width: size, height: size }}
     >
       <Image
-        src={`${API_BASE_URL}${item.imageUrl}`}
+        src={mediaUrl(item.imageUrl)}
         alt={item.name}
         fill
         sizes={`${size}px`}
@@ -281,7 +280,7 @@ export default function HomePage() {
                 <Link href={`/clothing-items/${item.id}`}>
                   <div className="relative aspect-square w-full overflow-hidden rounded bg-surface">
                     <Image
-                      src={`${API_BASE_URL}${item.imageUrl}`}
+                      src={mediaUrl(item.imageUrl)}
                       alt={item.name}
                       fill
                       sizes="(max-width: 640px) 50vw, 33vw"

@@ -15,8 +15,7 @@ import { connectMatchSocket } from "@/lib/ws/matchSocket";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { mediaUrl } from "@/lib/media";
 
 export default function MatchThreadPage() {
   const { token, user, isLoading } = useAuth();
@@ -228,7 +227,7 @@ export default function MatchThreadPage() {
               <Avatar
                 src={
                   match.otherUserProfilePictureUrl
-                    ? `${API_BASE_URL}${match.otherUserProfilePictureUrl}`
+                    ? mediaUrl(match.otherUserProfilePictureUrl)
                     : null
                 }
                 name={match.otherUserName}

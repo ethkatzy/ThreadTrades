@@ -8,8 +8,8 @@ import { UserReviews } from "@/components/UserReviews";
 import type { UserProfile } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { getMatchOtherUser } from "@/lib/api/matches";
+import { mediaUrl } from "@/lib/media";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 const tabClassName = (active: boolean) =>
   `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
 
@@ -73,7 +73,7 @@ export default function MatchedUserProfilePage() {
               <div className="relative h-24 w-24 overflow-hidden rounded-full bg-surface">
                 {profile.profilePictureUrl && (
                   <Image
-                    src={`${API_BASE_URL}${profile.profilePictureUrl}`}
+                    src={mediaUrl(profile.profilePictureUrl)}
                     alt={profile.name}
                     fill
                     sizes="96px"

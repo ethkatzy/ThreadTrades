@@ -1,0 +1,61 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec) -- lets Render
+# provision both services in one shot ("New +" -> "Blueprint", point at this
+# repo) instead of configuring each service by hand. Values marked
+# `sync: false` are secrets/deploy-specific and must be filled in via the
+# Render dashboard after the blueprint creates the service -- they are never
+# committed here. See ROADMAP.md #1/#2 for the reasoning behind this stack.
+services:
+  - type: web
+    name: threadtrades-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /actuator/health
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STORAGE_PROVIDER
+        value: r2
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_PUBLIC_BASE_URL
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      # The frontend service's public URL -- fill in after both services
+      # exist once (see the deployment checklist), then redeploy.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  - type: web
+    name: threadtrades-frontend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    envVars:
+      # Baked into the client bundle at build time (see frontend/Dockerfile) --
+      # the backend service's public URL. Changing this later needs a
+      # rebuild, not just a restart.
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      # Same value as R2_PUBLIC_BASE_URL above.
+      - key: NEXT_PUBLIC_STORAGE_PUBLIC_URL
+        sync: false

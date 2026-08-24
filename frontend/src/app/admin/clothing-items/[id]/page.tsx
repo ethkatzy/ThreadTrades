@@ -9,8 +9,7 @@ import { ApiError } from "@/lib/api/client";
 import type { ClothingItem } from "@/lib/api/clothingItems";
 import { Button } from "@/components/Button";
 import { StatusBadge, itemStatusTone } from "@/components/StatusBadge";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { mediaUrl } from "@/lib/media";
 
 export default function AdminClothingItemDetailPage() {
   const { token } = useAuth();
@@ -57,7 +56,7 @@ export default function AdminClothingItemDetailPage() {
     <div className="flex flex-col gap-4">
       <div className="flex gap-4">
         <div className="relative h-32 w-32 shrink-0 overflow-hidden rounded bg-surface">
-          <Image src={`${API_BASE_URL}${item.imageUrl}`} alt={item.name} fill sizes="128px" className="object-cover" />
+          <Image src={mediaUrl(item.imageUrl)} alt={item.name} fill sizes="128px" className="object-cover" />
         </div>
         <dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted">Name</dt>

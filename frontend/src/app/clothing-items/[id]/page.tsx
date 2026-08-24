@@ -6,8 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { ApiError } from "@/lib/api/client";
 import { getClothingItem, type ClothingItem } from "@/lib/api/clothingItems";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+import { mediaUrl } from "@/lib/media";
 
 export default function ClothingItemDetailPage() {
   const { token, user, isLoading } = useAuth();
@@ -56,7 +55,7 @@ export default function ClothingItemDetailPage() {
         <div className="flex flex-col gap-3">
           <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-surface">
             <Image
-              src={`${API_BASE_URL}${item.imageUrl}`}
+              src={mediaUrl(item.imageUrl)}
               alt={item.name}
               fill
               sizes="(max-width: 640px) 100vw, 448px"
