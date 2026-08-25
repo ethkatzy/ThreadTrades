@@ -2,29 +2,24 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminUsers, type AdminUser, type PagedResponse } from "@/lib/api/admin";
 import { StatusBadge, bannedTone, roleTone } from "@/components/StatusBadge";
 
 export default function AdminUsersPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<AdminUser> | null>(null);
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    listAdminUsers(token, page, 20, search || undefined)
+    listAdminUsers(page, 20, search || undefined)
       .then((r) => {
         setResult(r);
         setError(null);
       })
       .catch(() => setError("Couldn't load users."));
-  }, [token, page, search]);
+  }, [page, search]);
 
   return (
     <div className="flex flex-col gap-4">

@@ -2,28 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminMatches, type AdminMatch, type PagedResponse } from "@/lib/api/admin";
 import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminMatchesPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<AdminMatch> | null>(null);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    listAdminMatches(token, page)
+    listAdminMatches(page)
       .then((r) => {
         setResult(r);
         setError(null);
       })
       .catch(() => setError("Couldn't load matches."));
-  }, [token, page]);
+  }, [page]);
 
   return (
     <div className="flex flex-col gap-4">

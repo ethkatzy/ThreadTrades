@@ -9,7 +9,7 @@ import { getClothingItem, type ClothingItem } from "@/lib/api/clothingItems";
 import { mediaUrl } from "@/lib/media";
 
 export default function ClothingItemDetailPage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const itemId = Number(params.id);
@@ -24,15 +24,15 @@ export default function ClothingItemDetailPage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (!token || Number.isNaN(itemId)) {
+    if (!user || Number.isNaN(itemId)) {
       return;
     }
-    getClothingItem(token, itemId)
+    getClothingItem(itemId)
       .then(setItem)
       .catch((err) =>
         setError(err instanceof ApiError && err.status === 404 ? "Item not found." : "Couldn't load this item."),
       );
-  }, [token, itemId]);
+  }, [user, itemId]);
 
   if (isLoading || !user) {
     return (

@@ -3,9 +3,12 @@ package com.threadtrades.admin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.jayway.jsonpath.JsonPath;
 import com.threadtrades.TestcontainersConfiguration;
+import com.threadtrades.security.SessionCookieService;
+import jakarta.servlet.http.Cookie;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,20 +50,19 @@ class AdminAccessControlTest {
         "/api/admin/reviews"
     };
 
-    private String registerAndGetToken(String email, String username) throws Exception {
+    private Cookie registerAndGetToken(String email, String username) throws Exception {
         String registerJson =
                 """
                 {"email":"%s","password":"hunter2pass","username":"%s","name":"Test User"}
                 """
                         .formatted(email, username);
-        String responseJson = mockMvc.perform(post("/api/auth/register")
+        return mockMvc.perform(post("/api/auth/register").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerJson))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
-        return JsonPath.read(responseJson, "$.token");
+                .getCookie(SessionCookieService.COOKIE_NAME);
     }
 
     @Test
@@ -72,9 +74,9 @@ class AdminAccessControlTest {
 
     @Test
     void adminRoutesRejectNonAdminUsers() throws Exception {
-        String token = registerAndGetToken("regular@example.com", "regular");
+        Cookie token = registerAndGetToken("regular@example.com", "regular");
         for (String route : ADMIN_LIST_ROUTES) {
-            mockMvc.perform(get(route).header("Authorization", "Bearer " + token))
+            mockMvc.perform(get(route).cookie(token))
                     .andExpect(status().isForbidden());
         }
     }
@@ -83,8 +85,8 @@ class AdminAccessControlTest {
     void nonHealthInfoActuatorEndpointsAreAdminOnly() throws Exception {
         mockMvc.perform(get("/actuator/metrics")).andExpect(status().isUnauthorized());
 
-        String token = registerAndGetToken("nonadmin2@example.com", "nonadmin2");
-        mockMvc.perform(get("/actuator/metrics").header("Authorization", "Bearer " + token))
+        Cookie token = registerAndGetToken("nonadmin2@example.com", "nonadmin2");
+        mockMvc.perform(get("/actuator/metrics").cookie(token))
                 .andExpect(status().isForbidden());
     }
 

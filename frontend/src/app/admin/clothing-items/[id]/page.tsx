@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { getAdminClothingItem, removeClothingItem } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import type { ClothingItem } from "@/lib/api/clothingItems";
@@ -12,7 +11,6 @@ import { StatusBadge, itemStatusTone } from "@/components/StatusBadge";
 import { mediaUrl } from "@/lib/media";
 
 export default function AdminClothingItemDetailPage() {
-  const { token } = useAuth();
   const params = useParams<{ id: string }>();
   const itemId = Number(params.id);
 
@@ -22,22 +20,16 @@ export default function AdminClothingItemDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    getAdminClothingItem(token, itemId)
+    getAdminClothingItem(itemId)
       .then(setItem)
       .catch(() => setError("Couldn't load this item."));
-  }, [token, itemId]);
+  }, [itemId]);
 
   async function handleRemove() {
-    if (!token) {
-      return;
-    }
     setIsSubmitting(true);
     setActionError(null);
     try {
-      setItem(await removeClothingItem(token, itemId));
+      setItem(await removeClothingItem(itemId));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't remove this item.");
     } finally {

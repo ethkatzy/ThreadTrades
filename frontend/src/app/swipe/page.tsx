@@ -14,7 +14,7 @@ import { mediaUrl } from "@/lib/media";
 const DRAG_THRESHOLD = 100;
 
 export default function SwipePage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const [myItems, setMyItems] = useState<ClothingItem[] | null>(null);
@@ -41,16 +41,16 @@ export default function SwipePage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
-    listMyClothingItems(token)
+    listMyClothingItems()
       .then(setMyItems)
       .catch(() => setMyItemsError("Couldn't load your items."));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!token || offeredItemId === null) {
+    if (!user || offeredItemId === null) {
       return;
     }
     // Clear the previous offered item's deck/match state before loading the new
@@ -58,23 +58,23 @@ export default function SwipePage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
     setItems(null);
     setLastMatchItem(null);
-    getSwipeDeck(token, offeredItemId)
+    getSwipeDeck(offeredItemId)
       .then((deck) => {
         setItems(deck);
         setIndex(0);
       })
       .catch(() => setError("Couldn't load items to swipe."));
-  }, [token, offeredItemId]);
+  }, [user, offeredItemId]);
 
   async function handleSwipe(decision: SwipeDecision) {
     const item = items?.[index];
-    if (!token || !item || offeredItemId === null || isSubmitting) {
+    if (!user || !item || offeredItemId === null || isSubmitting) {
       return;
     }
     setIsSubmitting(true);
     setError(null);
     try {
-      const result = await recordSwipe(token, offeredItemId, item.id, decision);
+      const result = await recordSwipe(offeredItemId, item.id, decision);
       setLastMatchItem(result.matched ? item : null);
       setIndex((i) => i + 1);
     } catch (err) {

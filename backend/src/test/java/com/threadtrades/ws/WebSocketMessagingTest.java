@@ -7,8 +7,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.jayway.jsonpath.JsonPath;
 import com.threadtrades.TestcontainersConfiguration;
+import com.threadtrades.security.SessionCookieService;
 import java.lang.reflect.Type;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -64,7 +66,51 @@ class WebSocketMessagingTest {
         registry.add("app.jwt.secret", () -> "test-only-jwt-secret-not-for-production-use");
     }
 
-    private String registerAndGetToken(String email, String username) {
+    /**
+     * The session JWT and CSRF token, both delivered as Set-Cookie headers on register/login
+     * (see SecurityConfig's csrf.spa() + CsrfCookieFilter). TestRestTemplate has no cookie jar
+     * of its own (unlike a browser), so every subsequent request in this test manually replays
+     * both cookies via authHeaders(), mirroring what the browser does automatically for real.
+     */
+    private record Session(String sessionCookieValue, String csrfToken) {
+    }
+
+    /**
+     * A single response can carry more than one Set-Cookie for the same name (e.g. register
+     * gets both a clearing XSRF-TOKEN cookie from CsrfFilter's exemption handling for that path
+     * and a fresh one from CsrfCookieFilter forcing eager token generation) -- a real browser's
+     * cookie jar just applies them in order and keeps whatever's last, so this does the same
+     * (skipping any that carry no value) rather than naively taking the first match.
+     */
+    private static String extractCookieValue(ResponseEntity<?> response, String cookieName) {
+        List<String> matches = response.getHeaders().get(HttpHeaders.SET_COOKIE).stream()
+                .filter(setCookie -> setCookie.startsWith(cookieName + "="))
+                .map(setCookie -> setCookie.substring(cookieName.length() + 1, setCookie.indexOf(';')))
+                .filter(value -> !value.isEmpty())
+                .toList();
+        if (matches.isEmpty()) {
+            throw new AssertionError("No " + cookieName + " cookie in response");
+        }
+        return matches.get(matches.size() - 1);
+    }
+
+    /**
+     * Cookie + X-XSRF-TOKEN headers for a mutating (non-GET) authenticated request. Both the
+     * session cookie AND the XSRF-TOKEN cookie must be replayed -- CookieCsrfTokenRepository
+     * validates by comparing the X-XSRF-TOKEN header against the XSRF-TOKEN cookie on the
+     * *incoming* request, not just checking the header is present.
+     */
+    private static HttpHeaders authHeaders(Session session) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(
+                HttpHeaders.COOKIE,
+                SessionCookieService.COOKIE_NAME + "=" + session.sessionCookieValue() + "; XSRF-TOKEN="
+                        + session.csrfToken());
+        headers.add("X-XSRF-TOKEN", session.csrfToken());
+        return headers;
+    }
+
+    private Session registerAndGetToken(String email, String username) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         String registerJson =
@@ -75,10 +121,11 @@ class WebSocketMessagingTest {
         ResponseEntity<String> response =
                 restTemplate.postForEntity("/api/auth/register", new HttpEntity<>(registerJson, headers), String.class);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
-        return JsonPath.read(response.getBody(), "$.token");
+        return new Session(
+                extractCookieValue(response, SessionCookieService.COOKIE_NAME), extractCookieValue(response, "XSRF-TOKEN"));
     }
 
-    private Long uploadItem(String token, String name) {
+    private Long uploadItem(Session session, String name) {
         HttpHeaders imagePartHeaders = new HttpHeaders();
         imagePartHeaders.setContentType(MediaType.IMAGE_JPEG);
         HttpEntity<ByteArrayResource> imagePart = new HttpEntity<>(
@@ -98,9 +145,8 @@ class WebSocketMessagingTest {
         body.add("condition", "GOOD");
         body.add("gender", "UNISEX");
 
-        HttpHeaders headers = new HttpHeaders();
+        HttpHeaders headers = authHeaders(session);
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-        headers.setBearerAuth(token);
         ResponseEntity<String> response =
                 restTemplate.postForEntity("/api/clothing-items", new HttpEntity<>(body, headers), String.class);
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
@@ -108,10 +154,9 @@ class WebSocketMessagingTest {
         return id.longValue();
     }
 
-    private ResponseEntity<String> swipe(String token, Long offeredItemId, Long targetItemId, String decision) {
-        HttpHeaders headers = new HttpHeaders();
+    private ResponseEntity<String> swipe(Session session, Long offeredItemId, Long targetItemId, String decision) {
+        HttpHeaders headers = authHeaders(session);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
         String json = """
                 {"offeredItemId":%d,"clothingItemId":%d,"decision":"%s"}
                 """
@@ -119,30 +164,27 @@ class WebSocketMessagingTest {
         return restTemplate.postForEntity("/api/swipes", new HttpEntity<>(json, headers), String.class);
     }
 
-    /** Mutually likes offeredItemId/targetItemId between the two tokens and returns the resulting matchId. */
-    private Long createMatch(String tokenA, Long itemA, String tokenB, Long itemB) {
-        assertEquals(HttpStatus.CREATED, swipe(tokenA, itemA, itemB, "LIKE").getStatusCode());
-        ResponseEntity<String> response = swipe(tokenB, itemB, itemA, "LIKE");
+    /** Mutually likes offeredItemId/targetItemId between the two sessions and returns the resulting matchId. */
+    private Long createMatch(Session sessionA, Long itemA, Session sessionB, Long itemB) {
+        assertEquals(HttpStatus.CREATED, swipe(sessionA, itemA, itemB, "LIKE").getStatusCode());
+        ResponseEntity<String> response = swipe(sessionB, itemB, itemA, "LIKE");
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         Number matchId = JsonPath.read(response.getBody(), "$.matchId");
         return matchId.longValue();
     }
 
-    private void acceptSwap(String token, Long matchId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(token);
+    private void acceptSwap(Session session, Long matchId) {
         ResponseEntity<String> response = restTemplate.exchange(
                 "/api/matches/" + matchId + "/swap/accept",
                 org.springframework.http.HttpMethod.PATCH,
-                new HttpEntity<>(headers),
+                new HttpEntity<>(authHeaders(session)),
                 String.class);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
 
-    private void sendMessage(String token, Long matchId, String content) {
-        HttpHeaders headers = new HttpHeaders();
+    private void sendMessage(Session session, Long matchId, String content) {
+        HttpHeaders headers = authHeaders(session);
         headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.setBearerAuth(token);
         String json = """
                 {"content":"%s"}
                 """
@@ -158,11 +200,14 @@ class WebSocketMessagingTest {
         return client;
     }
 
-    private StompSession connect(WebSocketStompClient client, String token, RecordingStompSessionHandler handler)
+    private StompSession connect(WebSocketStompClient client, Session session, RecordingStompSessionHandler handler)
             throws Exception {
-        StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer " + token);
-        return client.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connectHeaders, handler)
+        // The session cookie travels on the WS handshake itself (a normal HTTP GET the browser
+        // attaches cookies to automatically) -- see SessionCookieHandshakeInterceptor -- not as
+        // a STOMP CONNECT header.
+        WebSocketHttpHeaders handshakeHeaders = new WebSocketHttpHeaders();
+        handshakeHeaders.add(HttpHeaders.COOKIE, SessionCookieService.COOKIE_NAME + "=" + session.sessionCookieValue());
+        return client.connectAsync("ws://localhost:" + port + "/ws", handshakeHeaders, new StompHeaders(), handler)
                 .get(5, TimeUnit.SECONDS);
     }
 
@@ -196,20 +241,20 @@ class WebSocketMessagingTest {
 
     @Test
     void matchParticipantReceivesLiveMessageOverWebSocket() throws Exception {
-        String tokenA = registerAndGetToken("wanda@example.com", "wanda");
-        String tokenB = registerAndGetToken("xavier@example.com", "xavier");
-        Long itemA = uploadItem(tokenA, "Wanda's Jacket");
-        Long itemB = uploadItem(tokenB, "Xavier's Jacket");
-        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+        Session sessionA = registerAndGetToken("wanda@example.com", "wanda");
+        Session sessionB = registerAndGetToken("xavier@example.com", "xavier");
+        Long itemA = uploadItem(sessionA, "Wanda's Jacket");
+        Long itemB = uploadItem(sessionB, "Xavier's Jacket");
+        Long matchId = createMatch(sessionA, itemA, sessionB, itemB);
 
         WebSocketStompClient client = newStompClient();
         RecordingStompSessionHandler handler = new RecordingStompSessionHandler();
-        StompSession session = connect(client, tokenB, handler);
+        StompSession session = connect(client, sessionB, handler);
         session.subscribe(MatchTopics.destination(matchId), handler);
         // Give the SUBSCRIBE frame time to reach the broker before the message is sent.
         Thread.sleep(300);
 
-        sendMessage(tokenA, matchId, "Hi Xavier!");
+        sendMessage(sessionA, matchId, "Hi Xavier!");
 
         Map<String, Object> received = handler.messages.poll(5, TimeUnit.SECONDS);
         assertNotNull(received);
@@ -222,20 +267,20 @@ class WebSocketMessagingTest {
 
     @Test
     void matchParticipantReceivesLiveSwapUpdateOverWebSocket() throws Exception {
-        String tokenA = registerAndGetToken("uma@example.com", "uma");
-        String tokenB = registerAndGetToken("victor@example.com", "victor");
-        Long itemA = uploadItem(tokenA, "Uma's Jacket");
-        Long itemB = uploadItem(tokenB, "Victor's Jacket");
-        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+        Session sessionA = registerAndGetToken("uma@example.com", "uma");
+        Session sessionB = registerAndGetToken("victor@example.com", "victor");
+        Long itemA = uploadItem(sessionA, "Uma's Jacket");
+        Long itemB = uploadItem(sessionB, "Victor's Jacket");
+        Long matchId = createMatch(sessionA, itemA, sessionB, itemB);
 
         WebSocketStompClient client = newStompClient();
         RecordingStompSessionHandler handler = new RecordingStompSessionHandler();
-        StompSession session = connect(client, tokenB, handler);
+        StompSession session = connect(client, sessionB, handler);
         session.subscribe(SwapTopics.destination(matchId), handler);
         // Give the SUBSCRIBE frame time to reach the broker before the accept is recorded.
         Thread.sleep(300);
 
-        acceptSwap(tokenA, matchId);
+        acceptSwap(sessionA, matchId);
 
         Map<String, Object> received = handler.messages.poll(5, TimeUnit.SECONDS);
         assertNotNull(received);
@@ -247,14 +292,12 @@ class WebSocketMessagingTest {
     }
 
     @Test
-    void connectWithInvalidTokenIsRejected() throws Exception {
+    void connectWithoutASessionCookieIsRejected() throws Exception {
         WebSocketStompClient client = newStompClient();
         RecordingStompSessionHandler handler = new RecordingStompSessionHandler();
-        StompHeaders connectHeaders = new StompHeaders();
-        connectHeaders.add("Authorization", "Bearer not-a-real-token");
 
-        CompletableFuture<StompSession> connectFuture =
-                client.connectAsync("ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), connectHeaders, handler);
+        CompletableFuture<StompSession> connectFuture = client.connectAsync(
+                "ws://localhost:" + port + "/ws", new WebSocketHttpHeaders(), new StompHeaders(), handler);
 
         boolean connectFailed = false;
         try {
@@ -272,19 +315,19 @@ class WebSocketMessagingTest {
 
     @Test
     void userNotInTheMatchCannotSubscribeToItsThread() throws Exception {
-        String tokenA = registerAndGetToken("yara@example.com", "yara");
-        String tokenB = registerAndGetToken("zack@example.com", "zack");
-        String outsiderToken = registerAndGetToken("owen@example.com", "owen");
-        Long itemA = uploadItem(tokenA, "Yara's Jacket");
-        Long itemB = uploadItem(tokenB, "Zack's Jacket");
-        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+        Session sessionA = registerAndGetToken("yara@example.com", "yara");
+        Session sessionB = registerAndGetToken("zack@example.com", "zack");
+        Session outsiderSession = registerAndGetToken("owen@example.com", "owen");
+        Long itemA = uploadItem(sessionA, "Yara's Jacket");
+        Long itemB = uploadItem(sessionB, "Zack's Jacket");
+        Long matchId = createMatch(sessionA, itemA, sessionB, itemB);
 
         WebSocketStompClient client = newStompClient();
         RecordingStompSessionHandler handler = new RecordingStompSessionHandler();
-        StompSession session = connect(client, outsiderToken, handler);
+        StompSession session = connect(client, outsiderSession, handler);
         session.subscribe(MatchTopics.destination(matchId), handler);
 
-        sendMessage(tokenA, matchId, "Outsider should not see this");
+        sendMessage(sessionA, matchId, "Outsider should not see this");
 
         Map<String, Object> received = handler.messages.poll(2, TimeUnit.SECONDS);
         assertNull(received, "outsider should not receive messages from a match they aren't part of");

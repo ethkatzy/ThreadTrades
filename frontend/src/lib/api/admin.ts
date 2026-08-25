@@ -58,7 +58,6 @@ function query(params: Record<string, string | number | undefined>): string {
 }
 
 export function listAdminUsers(
-  token: string,
   page = 0,
   size = 20,
   search?: string,
@@ -66,32 +65,30 @@ export function listAdminUsers(
   return apiFetch<PagedResponse<AdminUser>>(
     `/api/admin/users${query({ page, size, query: search })}`,
     {},
-    token,
   );
 }
 
-export function getAdminUser(token: string, id: number): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/api/admin/users/${id}`, {}, token);
+export function getAdminUser(id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}`, {});
 }
 
-export function banUser(token: string, id: number): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/api/admin/users/${id}/ban`, { method: "POST" }, token);
+export function banUser(id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/ban`, { method: "POST" });
 }
 
-export function unbanUser(token: string, id: number): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/api/admin/users/${id}/unban`, { method: "POST" }, token);
+export function unbanUser(id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/unban`, { method: "POST" });
 }
 
-export function promoteUser(token: string, id: number): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/api/admin/users/${id}/promote`, { method: "POST" }, token);
+export function promoteUser(id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/promote`, { method: "POST" });
 }
 
-export function demoteUser(token: string, id: number): Promise<AdminUser> {
-  return apiFetch<AdminUser>(`/api/admin/users/${id}/demote`, { method: "POST" }, token);
+export function demoteUser(id: number): Promise<AdminUser> {
+  return apiFetch<AdminUser>(`/api/admin/users/${id}/demote`, { method: "POST" });
 }
 
 export function listAdminClothingItems(
-  token: string,
   page = 0,
   size = 20,
   status?: ClothingItem["status"],
@@ -99,64 +96,60 @@ export function listAdminClothingItems(
   return apiFetch<PagedResponse<ClothingItem>>(
     `/api/admin/clothing-items${query({ page, size, status })}`,
     {},
-    token,
   );
 }
 
-export function getAdminClothingItem(token: string, id: number): Promise<ClothingItem> {
-  return apiFetch<ClothingItem>(`/api/admin/clothing-items/${id}`, {}, token);
+export function getAdminClothingItem(id: number): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>(`/api/admin/clothing-items/${id}`, {});
 }
 
-export function removeClothingItem(token: string, id: number): Promise<ClothingItem> {
-  return apiFetch<ClothingItem>(`/api/admin/clothing-items/${id}/remove`, { method: "POST" }, token);
+export function removeClothingItem(id: number): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>(`/api/admin/clothing-items/${id}/remove`, { method: "POST" });
 }
 
-export function listAdminMatches(token: string, page = 0, size = 20): Promise<PagedResponse<AdminMatch>> {
-  return apiFetch<PagedResponse<AdminMatch>>(`/api/admin/matches${query({ page, size })}`, {}, token);
+export function listAdminMatches(page = 0, size = 20): Promise<PagedResponse<AdminMatch>> {
+  return apiFetch<PagedResponse<AdminMatch>>(`/api/admin/matches${query({ page, size })}`, {});
 }
 
-export function getAdminMatch(token: string, id: number): Promise<AdminMatch> {
-  return apiFetch<AdminMatch>(`/api/admin/matches/${id}`, {}, token);
+export function getAdminMatch(id: number): Promise<AdminMatch> {
+  return apiFetch<AdminMatch>(`/api/admin/matches/${id}`, {});
 }
 
 export function listAdminSwaps(
-  token: string,
   page = 0,
   size = 20,
   status?: SwapStatus,
 ): Promise<PagedResponse<AdminSwap>> {
-  return apiFetch<PagedResponse<AdminSwap>>(`/api/admin/swaps${query({ page, size, status })}`, {}, token);
+  return apiFetch<PagedResponse<AdminSwap>>(`/api/admin/swaps${query({ page, size, status })}`, {});
 }
 
-export function getAdminSwap(token: string, id: number): Promise<AdminSwap> {
-  return apiFetch<AdminSwap>(`/api/admin/swaps/${id}`, {}, token);
+export function getAdminSwap(id: number): Promise<AdminSwap> {
+  return apiFetch<AdminSwap>(`/api/admin/swaps/${id}`, {});
 }
 
-export function forceResolveSwap(token: string, id: number, status: "ACCEPTED" | "REJECTED"): Promise<AdminSwap> {
+export function forceResolveSwap(id: number, status: "ACCEPTED" | "REJECTED"): Promise<AdminSwap> {
   return apiFetch<AdminSwap>(
     `/api/admin/swaps/${id}/force-resolve`,
     { method: "POST", body: JSON.stringify({ status }) },
-    token,
   );
 }
 
 export function listAdminMessages(
-  token: string,
   page = 0,
   size = 20,
   matchId?: number,
 ): Promise<PagedResponse<Message>> {
-  return apiFetch<PagedResponse<Message>>(`/api/admin/messages${query({ page, size, matchId })}`, {}, token);
+  return apiFetch<PagedResponse<Message>>(`/api/admin/messages${query({ page, size, matchId })}`, {});
 }
 
-export function deleteAdminMessage(token: string, id: number): Promise<void> {
-  return apiFetch<void>(`/api/admin/messages/${id}`, { method: "DELETE" }, token);
+export function deleteAdminMessage(id: number): Promise<void> {
+  return apiFetch<void>(`/api/admin/messages/${id}`, { method: "DELETE" });
 }
 
-export function listAdminReviews(token: string, page = 0, size = 20): Promise<PagedResponse<Review>> {
-  return apiFetch<PagedResponse<Review>>(`/api/admin/reviews${query({ page, size })}`, {}, token);
+export function listAdminReviews(page = 0, size = 20): Promise<PagedResponse<Review>> {
+  return apiFetch<PagedResponse<Review>>(`/api/admin/reviews${query({ page, size })}`, {});
 }
 
-export function deleteAdminReview(token: string, id: number): Promise<void> {
-  return apiFetch<void>(`/api/admin/reviews/${id}`, { method: "DELETE" }, token);
+export function deleteAdminReview(id: number): Promise<void> {
+  return apiFetch<void>(`/api/admin/reviews/${id}`, { method: "DELETE" });
 }

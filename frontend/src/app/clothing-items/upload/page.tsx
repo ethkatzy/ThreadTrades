@@ -32,7 +32,7 @@ const inputClassName = "rounded border border-border px-3 py-2";
 const selectClassName = `${inputClassName} bg-background text-foreground`;
 
 export default function UploadClothingItemPage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -55,7 +55,7 @@ export default function UploadClothingItemPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) {
+    if (!user) {
       return;
     }
     if (!image) {
@@ -83,7 +83,7 @@ export default function UploadClothingItemPage() {
       formData.append("condition", condition);
       formData.append("gender", gender);
 
-      await uploadClothingItem(token, formData);
+      await uploadClothingItem(formData);
       router.push("/");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");

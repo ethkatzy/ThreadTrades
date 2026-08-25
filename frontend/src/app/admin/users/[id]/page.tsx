@@ -2,14 +2,12 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { banUser, demoteUser, getAdminUser, promoteUser, unbanUser, type AdminUser } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/Button";
 import { StatusBadge, bannedTone, roleTone } from "@/components/StatusBadge";
 
 export default function AdminUserDetailPage() {
-  const { token } = useAuth();
   const params = useParams<{ id: string }>();
   const userId = Number(params.id);
 
@@ -19,22 +17,19 @@ export default function AdminUserDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    getAdminUser(token, userId)
+    getAdminUser(userId)
       .then(setUser)
       .catch(() => setError("Couldn't load this user."));
-  }, [token, userId]);
+  }, [userId]);
 
   async function handleToggleBan() {
-    if (!token || !user) {
+    if (!user) {
       return;
     }
     setIsSubmitting(true);
     setActionError(null);
     try {
-      setUser(user.banned ? await unbanUser(token, userId) : await banUser(token, userId));
+      setUser(user.banned ? await unbanUser(userId) : await banUser(userId));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't update this user.");
     } finally {
@@ -43,13 +38,13 @@ export default function AdminUserDetailPage() {
   }
 
   async function handleToggleRole() {
-    if (!token || !user) {
+    if (!user) {
       return;
     }
     setIsSubmitting(true);
     setActionError(null);
     try {
-      setUser(user.role === "ADMIN" ? await demoteUser(token, userId) : await promoteUser(token, userId));
+      setUser(user.role === "ADMIN" ? await demoteUser(userId) : await promoteUser(userId));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't update this user.");
     } finally {

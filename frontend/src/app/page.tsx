@@ -37,7 +37,7 @@ function ItemThumbnail({ item, size = 80 }: { item: ClothingItem; size?: number 
 }
 
 export default function HomePage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const [items, setItems] = useState<ClothingItem[] | null>(null);
   const [itemsError, setItemsError] = useState<string | null>(null);
@@ -53,26 +53,26 @@ export default function HomePage() {
   const [swipeTeaserError, setSwipeTeaserError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
-    listMyClothingItems(token)
+    listMyClothingItems()
       .then(setItems)
       .catch(() => setItemsError("Couldn't load your items."));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
     let cancelled = false;
-    listMatches(token)
+    listMatches()
       .then(async (matches) => {
         const enriched = await Promise.all(
           matches.map(async (match) => {
             const [swap, messages] = await Promise.all([
-              getSwap(token, match.id).catch(() => null),
-              listMessages(token, match.id).catch(() => null),
+              getSwap(match.id).catch(() => null),
+              listMessages(match.id).catch(() => null),
             ]);
             return {
               match,
@@ -93,32 +93,32 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
-    listSwapHistory(token)
+    listSwapHistory()
       .then(setHistory)
       .catch(() => setHistoryError("Couldn't load your swap history."));
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    if (!token || !items) {
+    if (!user || !items) {
       return;
     }
     const offeredItem = items.find((item) => item.status === "AVAILABLE");
     if (!offeredItem) {
       return;
     }
-    getSwipeDeck(token, offeredItem.id)
+    getSwipeDeck(offeredItem.id)
       .then((deck) => {
         setSwipeTeaserOfferedItem(offeredItem);
         setSwipeTeaser(deck.slice(0, 4));
       })
       .catch(() => setSwipeTeaserError("Couldn't load new items to swipe on."));
-  }, [token, items]);
+  }, [user, items]);
 
   if (isLoading) {
     return (

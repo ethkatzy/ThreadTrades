@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { apiFetch } from "@/lib/api/client";
 import { Card } from "@/components/Card";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,18 +8,14 @@ import { StatusBadge } from "@/components/StatusBadge";
 type HealthStatus = { status: string };
 
 export default function AdminDashboardPage() {
-  const { token } = useAuth();
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [healthError, setHealthError] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    apiFetch<HealthStatus>("/actuator/health", {}, token)
+    apiFetch<HealthStatus>("/actuator/health")
       .then(setHealth)
       .catch(() => setHealthError(true));
-  }, [token]);
+  }, []);
 
   return (
     <div className="flex flex-col gap-6">

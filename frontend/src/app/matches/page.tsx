@@ -11,7 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { mediaUrl } from "@/lib/media";
 
 export default function MatchesPage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
 
   const [matches, setMatches] = useState<Match[] | null>(null);
@@ -24,13 +24,13 @@ export default function MatchesPage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
-    listMatches(token)
+    listMatches()
       .then(setMatches)
       .catch(() => setError("Couldn't load your matches."));
-  }, [token]);
+  }, [user]);
 
   if (isLoading || !user) {
     return (

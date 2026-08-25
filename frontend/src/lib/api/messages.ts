@@ -8,14 +8,13 @@ export type Message = {
   sentAt: string;
 };
 
-export function listMessages(token: string, matchId: number): Promise<Message[]> {
-  return apiFetch<Message[]>(`/api/matches/${matchId}/messages`, {}, token);
+export function listMessages(matchId: number): Promise<Message[]> {
+  return apiFetch<Message[]>(`/api/matches/${matchId}/messages`, {});
 }
 
-export function sendMessage(token: string, matchId: number, content: string): Promise<Message> {
+export function sendMessage(matchId: number, content: string): Promise<Message> {
   return apiFetch<Message>(
     `/api/matches/${matchId}/messages`,
     { method: "POST", body: JSON.stringify({ content }) },
-    token,
   );
 }

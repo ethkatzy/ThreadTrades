@@ -14,7 +14,7 @@ const tabClassName = (active: boolean) =>
   `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
 
 export default function MatchedUserProfilePage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ matchId: string }>();
   const matchId = Number(params.matchId);
@@ -30,15 +30,15 @@ export default function MatchedUserProfilePage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (!token || Number.isNaN(matchId)) {
+    if (!user || Number.isNaN(matchId)) {
       return;
     }
-    getMatchOtherUser(token, matchId)
+    getMatchOtherUser(matchId)
       .then(setProfile)
       .catch((err) =>
         setError(err instanceof ApiError ? err.message : "Couldn't load this user's profile."),
       );
-  }, [token, matchId]);
+  }, [user, matchId]);
 
   if (isLoading || !user) {
     return (

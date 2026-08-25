@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { deleteAdminReview, listAdminReviews, type PagedResponse } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -10,17 +9,13 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
 export default function AdminReviewsPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<Review> | null>(null);
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   function load() {
-    if (!token) {
-      return;
-    }
-    listAdminReviews(token, page)
+    listAdminReviews(page)
       .then((r) => {
         setResult(r);
         setError(null);
@@ -28,15 +23,12 @@ export default function AdminReviewsPage() {
       .catch(() => setError("Couldn't load reviews."));
   }
 
-  useEffect(load, [token, page]);
+  useEffect(load, [page]);
 
   async function handleDelete(id: number) {
-    if (!token) {
-      return;
-    }
     setActionError(null);
     try {
-      await deleteAdminReview(token, id);
+      await deleteAdminReview(id);
       load();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't delete this review.");

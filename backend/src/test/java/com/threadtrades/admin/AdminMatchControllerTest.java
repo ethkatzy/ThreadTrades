@@ -5,9 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.jayway.jsonpath.JsonPath;
 import com.threadtrades.TestcontainersConfiguration;
+import com.threadtrades.security.SessionCookieService;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -41,48 +44,46 @@ class AdminMatchControllerTest {
         registry.add("app.storage.local-path", () -> STORAGE_LOCAL_PATH);
     }
 
-    private String registerAndGetToken(String email, String username) throws Exception {
+    private Cookie registerAndGetToken(String email, String username) throws Exception {
         String registerJson =
                 """
                 {"email":"%s","password":"hunter2pass","username":"%s","name":"Test User"}
                 """
                         .formatted(email, username);
-        String responseJson = mockMvc.perform(post("/api/auth/register")
+        return mockMvc.perform(post("/api/auth/register").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerJson))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
-        return JsonPath.read(responseJson, "$.token");
+                .getCookie(SessionCookieService.COOKIE_NAME);
     }
 
-    private String promoteToAdmin(String email) throws Exception {
+    private Cookie promoteToAdmin(String email) throws Exception {
         jdbcTemplate.update("UPDATE app_user SET role = 'ADMIN' WHERE email = ?", email);
         String loginJson = """
                 {"email":"%s","password":"hunter2pass"}
                 """.formatted(email);
-        String responseJson = mockMvc.perform(post("/api/auth/login")
+        return mockMvc.perform(post("/api/auth/login").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginJson))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
-        return JsonPath.read(responseJson, "$.token");
+                .getCookie(SessionCookieService.COOKIE_NAME);
     }
 
-    private Long uploadItem(String token, String name) throws Exception {
+    private Long uploadItem(Cookie token, String name) throws Exception {
         MockMultipartFile image = new MockMultipartFile(
                 "image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
-        String responseJson = mockMvc.perform(multipart("/api/clothing-items")
+        String responseJson = mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(image)
                         .param("name", name)
                         .param("itemType", "Jacket")
                         .param("clothingSize", "M")
                         .param("condition", "GOOD")
                         .param("gender", "UNISEX")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -98,16 +99,16 @@ class AdminMatchControllerTest {
                 .formatted(offeredItemId, clothingItemId, decision);
     }
 
-    private Long createMatch(String tokenA, Long itemA, String tokenB, Long itemB) throws Exception {
-        mockMvc.perform(post("/api/swipes")
+    private Long createMatch(Cookie tokenA, Long itemA, Cookie tokenB, Long itemB) throws Exception {
+        mockMvc.perform(post("/api/swipes").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(swipeJson(itemA, itemB, "LIKE"))
-                        .header("Authorization", "Bearer " + tokenA))
+                        .cookie(tokenA))
                 .andExpect(status().isCreated());
-        String responseJson = mockMvc.perform(post("/api/swipes")
+        String responseJson = mockMvc.perform(post("/api/swipes").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(swipeJson(itemB, itemA, "LIKE"))
-                        .header("Authorization", "Bearer " + tokenB))
+                        .cookie(tokenB))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
@@ -118,22 +119,22 @@ class AdminMatchControllerTest {
 
     @Test
     void adminCanListAndViewAMatchIncludingUnwaitedSwapState() throws Exception {
-        String tokenA = registerAndGetToken("matcha@example.com", "matcha");
-        String tokenB = registerAndGetToken("matchb@example.com", "matchb");
+        Cookie tokenA = registerAndGetToken("matcha@example.com", "matcha");
+        Cookie tokenB = registerAndGetToken("matchb@example.com", "matchb");
         Long itemA = uploadItem(tokenA, "Match A Jacket");
         Long itemB = uploadItem(tokenB, "Match B Jacket");
         Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
 
         registerAndGetToken("admin4@example.com", "admin4");
-        String adminToken = promoteToAdmin("admin4@example.com");
+        Cookie adminToken = promoteToAdmin("admin4@example.com");
 
-        mockMvc.perform(get("/api/admin/matches").header("Authorization", "Bearer " + adminToken))
+        mockMvc.perform(get("/api/admin/matches").cookie(adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[?(@.id == " + matchId + ")]").exists());
 
         // No swap row exists yet -- it's created lazily the first time the swap
         // endpoint is hit, not eagerly on match creation (see SwapService).
-        mockMvc.perform(get("/api/admin/matches/" + matchId).header("Authorization", "Bearer " + adminToken))
+        mockMvc.perform(get("/api/admin/matches/" + matchId).cookie(adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.userAUsername").value("matcha"))
                 .andExpect(jsonPath("$.userBUsername").value("matchb"))

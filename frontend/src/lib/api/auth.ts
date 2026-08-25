@@ -1,7 +1,6 @@
 import { apiFetch } from "./client";
 
 export type AuthResponse = {
-  token: string;
   userId: number;
   username: string;
   name: string;
@@ -42,10 +41,14 @@ export function login(input: LoginInput): Promise<AuthResponse> {
   });
 }
 
-export function getCurrentUser(token: string): Promise<UserProfile> {
-  return apiFetch<UserProfile>("/api/users/me", {}, token);
+export function logout(): Promise<void> {
+  return apiFetch<void>("/api/auth/logout", { method: "POST" });
 }
 
-export function updateProfile(token: string, formData: FormData): Promise<UserProfile> {
-  return apiFetch<UserProfile>("/api/users/me", { method: "PATCH", body: formData }, token);
+export function getCurrentUser(): Promise<UserProfile> {
+  return apiFetch<UserProfile>("/api/users/me");
+}
+
+export function updateProfile(formData: FormData): Promise<UserProfile> {
+  return apiFetch<UserProfile>("/api/users/me", { method: "PATCH", body: formData });
 }

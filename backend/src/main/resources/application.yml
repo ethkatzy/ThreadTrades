@@ -27,6 +27,13 @@ app:
   jwt:
     secret: ${JWT_SECRET}
     expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+  cookie:
+    # false/Lax for local http dev (frontend+backend are both "localhost", so
+    # Lax is sent on same-site XHR/fetch fine); set COOKIE_SECURE=true and
+    # COOKIE_SAME_SITE=None on Render, where frontend/backend are on different
+    # domains (cross-site) and SameSite=None requires Secure. See ROADMAP.md #3.
+    secure: ${COOKIE_SECURE:false}
+    same-site: ${COOKIE_SAME_SITE:Lax}
   storage:
     # "local" (default, dev-only, see LocalDiskStorageService) or "r2" (see
     # R2StorageService) -- ROADMAP.md #1.

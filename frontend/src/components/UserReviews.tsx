@@ -15,21 +15,21 @@ function Stars({ rating }: { rating: number }) {
 }
 
 export function UserReviews({ userId, showIdentity = false }: { userId: number; showIdentity?: boolean }) {
-  const { token } = useAuth();
+  const { user } = useAuth();
   const [data, setData] = useState<UserReviewsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
+    if (!user) {
       return;
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing stale data before refetching for a new userId, not a derived render value
     setData(null);
     setError(null);
-    getUserReviews(token, userId)
+    getUserReviews(userId)
       .then(setData)
       .catch(() => setError("Couldn't load reviews."));
-  }, [token, userId]);
+  }, [user, userId]);
 
   if (error) {
     return <p className="text-sm text-red-600">{error}</p>;

@@ -14,18 +14,24 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompAuthChannelInterceptor authChannelInterceptor;
+    private final SessionCookieHandshakeInterceptor handshakeInterceptor;
     private final List<String> allowedOrigins;
 
     public WebSocketConfig(
             StompAuthChannelInterceptor authChannelInterceptor,
+            SessionCookieHandshakeInterceptor handshakeInterceptor,
             @Value("${app.cors.allowed-origins}") List<String> allowedOrigins) {
         this.authChannelInterceptor = authChannelInterceptor;
+        this.handshakeInterceptor = handshakeInterceptor;
         this.allowedOrigins = allowedOrigins;
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws").setAllowedOrigins(allowedOrigins.toArray(new String[0]));
+        registry
+                .addEndpoint("/ws")
+                .setAllowedOrigins(allowedOrigins.toArray(new String[0]))
+                .addInterceptors(handshakeInterceptor);
     }
 
     @Override

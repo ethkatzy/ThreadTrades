@@ -21,18 +21,16 @@ export type UserReviews = {
   reviews: Review[];
 };
 
-export function getUserReviews(token: string, userId: number): Promise<UserReviews> {
-  return apiFetch<UserReviews>(`/api/users/${userId}/reviews`, {}, token);
+export function getUserReviews(userId: number): Promise<UserReviews> {
+  return apiFetch<UserReviews>(`/api/users/${userId}/reviews`, {});
 }
 
 export function submitReview(
-  token: string,
   matchId: number,
   input: { rating?: number; comment?: string },
 ): Promise<Review> {
   return apiFetch<Review>(
     `/api/matches/${matchId}/review`,
     { method: "POST", body: JSON.stringify(input) },
-    token,
   );
 }

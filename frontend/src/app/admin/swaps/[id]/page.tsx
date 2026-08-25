@@ -3,14 +3,12 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { forceResolveSwap, getAdminSwap, type AdminSwap } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { Button } from "@/components/Button";
 import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminSwapDetailPage() {
-  const { token } = useAuth();
   const params = useParams<{ id: string }>();
   const swapId = Number(params.id);
 
@@ -20,22 +18,16 @@ export default function AdminSwapDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    getAdminSwap(token, swapId)
+    getAdminSwap(swapId)
       .then(setSwap)
       .catch(() => setError("Couldn't load this swap."));
-  }, [token, swapId]);
+  }, [swapId]);
 
   async function handleForceResolve(target: "ACCEPTED" | "REJECTED") {
-    if (!token) {
-      return;
-    }
     setIsSubmitting(true);
     setActionError(null);
     try {
-      setSwap(await forceResolveSwap(token, swapId, target));
+      setSwap(await forceResolveSwap(swapId, target));
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't force-resolve this swap.");
     } finally {

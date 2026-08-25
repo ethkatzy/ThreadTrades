@@ -9,7 +9,6 @@ function wsUrl(): string {
 }
 
 type ConnectMatchSocketOptions = {
-  token: string;
   matchId: number;
   onMessage: (message: Message) => void;
   onSwapUpdate?: (swap: Swap) => void;
@@ -19,15 +18,16 @@ type ConnectMatchSocketOptions = {
 /**
  * Opens a STOMP connection and subscribes to one match's live thread
  * (backend: MatchTopics.destination) and its swap-status updates (backend:
- * SwapTopics.destination). The JWT travels as a STOMP CONNECT header, not the
- * WebSocket handshake itself, since browsers can't attach custom headers to
- * that handshake -- see StompAuthChannelInterceptor.
+ * SwapTopics.destination). The session cookie rides along on the raw
+ * WebSocket handshake automatically (the browser attaches cookies to it same
+ * as any other request to that origin) -- see
+ * SessionCookieHandshakeInterceptor on the backend, which reads it from
+ * there rather than a STOMP CONNECT header.
  * Caller owns the returned client's lifecycle (call deactivate() on unmount).
  */
 export function connectMatchSocket(options: ConnectMatchSocketOptions): Client {
   const client = new Client({
     brokerURL: wsUrl(),
-    connectHeaders: { Authorization: `Bearer ${options.token}` },
     reconnectDelay: 5000,
     onConnect: () => {
       options.onConnectedChange?.(true);

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminClothingItems } from "@/lib/api/admin";
 import type { PagedResponse } from "@/lib/api/admin";
@@ -12,23 +11,19 @@ import { StatusBadge, itemStatusTone } from "@/components/StatusBadge";
 const STATUS_OPTIONS: Array<ClothingItem["status"] | ""> = ["", "AVAILABLE", "SWAPPED", "REMOVED"];
 
 export default function AdminClothingItemsPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<ClothingItem> | null>(null);
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<ClothingItem["status"] | "">("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    listAdminClothingItems(token, page, 20, status || undefined)
+    listAdminClothingItems(page, 20, status || undefined)
       .then((r) => {
         setResult(r);
         setError(null);
       })
       .catch(() => setError("Couldn't load clothing items."));
-  }, [token, page, status]);
+  }, [page, status]);
 
   return (
     <div className="flex flex-col gap-4">

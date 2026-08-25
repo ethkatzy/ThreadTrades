@@ -5,9 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.jayway.jsonpath.JsonPath;
 import com.threadtrades.TestcontainersConfiguration;
+import com.threadtrades.security.SessionCookieService;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -38,27 +41,26 @@ class UserControllerTest {
         registry.add("app.storage.local-path", () -> STORAGE_LOCAL_PATH);
     }
 
-    private String registerAndGetToken(String email, String username) throws Exception {
+    private Cookie registerAndGetToken(String email, String username) throws Exception {
         String registerJson =
                 """
                 {"email":"%s","password":"hunter2pass","username":"%s","name":"Test User"}
                 """
                         .formatted(email, username);
-        String responseJson = mockMvc.perform(post("/api/auth/register")
+        return mockMvc.perform(post("/api/auth/register").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerJson))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
-        return JsonPath.read(responseJson, "$.token");
+                .getCookie(SessionCookieService.COOKIE_NAME);
     }
 
     @Test
     void meReturnsTheAuthenticatedUsersProfile() throws Exception {
-        String token = registerAndGetToken("liam@example.com", "liam");
+        Cookie token = registerAndGetToken("liam@example.com", "liam");
 
-        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/users/me").cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("liam"))
                 .andExpect(jsonPath("$.name").value("Test User"))
@@ -73,18 +75,18 @@ class UserControllerTest {
 
     @Test
     void editingNameAndBioPersistsAndLeavesUsernameUnchanged() throws Exception {
-        String token = registerAndGetToken("mara@example.com", "mara");
+        Cookie token = registerAndGetToken("mara@example.com", "mara");
 
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me")
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf())
                         .param("name", "Mara Updated")
                         .param("bio", "Loves swapping jackets.")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("mara"))
                 .andExpect(jsonPath("$.name").value("Mara Updated"))
                 .andExpect(jsonPath("$.bio").value("Loves swapping jackets."));
 
-        mockMvc.perform(get("/api/users/me").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/users/me").cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Mara Updated"))
                 .andExpect(jsonPath("$.bio").value("Loves swapping jackets."));
@@ -92,31 +94,31 @@ class UserControllerTest {
 
     @Test
     void blankBioClearsAnExistingBio() throws Exception {
-        String token = registerAndGetToken("noah@example.com", "noah");
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me")
+        Cookie token = registerAndGetToken("noah@example.com", "noah");
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf())
                         .param("name", "Noah")
                         .param("bio", "Temporary bio")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me")
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf())
                         .param("name", "Noah")
                         .param("bio", "")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.bio").doesNotExist());
     }
 
     @Test
     void uploadingAPictureUpdatesProfilePictureUrl() throws Exception {
-        String token = registerAndGetToken("olga@example.com", "olga");
+        Cookie token = registerAndGetToken("olga@example.com", "olga");
         MockMultipartFile image = new MockMultipartFile(
                 "image", "avatar.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
 
-        String responseJson = mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me")
+        String responseJson = mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf())
                         .file(image)
                         .param("name", "Olga")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isOk())
                 .andReturn()
                 .getResponse()
@@ -128,17 +130,17 @@ class UserControllerTest {
 
     @Test
     void editingWithABlankNameIsRejected() throws Exception {
-        String token = registerAndGetToken("penny@example.com", "penny");
+        Cookie token = registerAndGetToken("penny@example.com", "penny");
 
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me")
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf())
                         .param("name", "")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void editingRequiresAuthentication() throws Exception {
-        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").param("name", "Nobody"))
+        mockMvc.perform(multipart(HttpMethod.PATCH, "/api/users/me").with(csrf()).param("name", "Nobody"))
                 .andExpect(status().isUnauthorized());
     }
 }

@@ -17,7 +17,7 @@ const tabClassName = (active: boolean) =>
   `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
 
 export default function ProfilePage() {
-  const { user, token, isLoading, updateProfile } = useAuth();
+  const { user, isLoading, updateProfile } = useAuth();
   const router = useRouter();
 
   const [activeTab, setActiveTab] = useState<"profile" | "history" | "reviews">("profile");
@@ -61,13 +61,13 @@ export default function ProfilePage() {
   }, [image]);
 
   useEffect(() => {
-    if (!token || activeTab !== "history" || history !== null) {
+    if (!user || activeTab !== "history" || history !== null) {
       return;
     }
-    listSwapHistory(token)
+    listSwapHistory()
       .then(setHistory)
       .catch(() => setHistoryError("Couldn't load your swap history."));
-  }, [token, activeTab, history]);
+  }, [user, activeTab, history]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { deleteAdminMessage, listAdminMessages, type PagedResponse } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -10,7 +9,6 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 
 export default function AdminMessagesPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<Message> | null>(null);
   const [page, setPage] = useState(0);
   const [matchId, setMatchId] = useState("");
@@ -18,10 +16,7 @@ export default function AdminMessagesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   function load() {
-    if (!token) {
-      return;
-    }
-    listAdminMessages(token, page, 20, matchId ? Number(matchId) : undefined)
+    listAdminMessages(page, 20, matchId ? Number(matchId) : undefined)
       .then((r) => {
         setResult(r);
         setError(null);
@@ -29,15 +24,12 @@ export default function AdminMessagesPage() {
       .catch(() => setError("Couldn't load messages."));
   }
 
-  useEffect(load, [token, page, matchId]);
+  useEffect(load, [page, matchId]);
 
   async function handleDelete(id: number) {
-    if (!token) {
-      return;
-    }
     setActionError(null);
     try {
-      await deleteAdminMessage(token, id);
+      await deleteAdminMessage(id);
       load();
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : "Couldn't delete this message.");

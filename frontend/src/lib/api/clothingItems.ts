@@ -18,14 +18,14 @@ export type ClothingItem = {
   ownerReviewCount: number;
 };
 
-export function listMyClothingItems(token: string): Promise<ClothingItem[]> {
-  return apiFetch<ClothingItem[]>("/api/clothing-items/mine", {}, token);
+export function listMyClothingItems(): Promise<ClothingItem[]> {
+  return apiFetch<ClothingItem[]>("/api/clothing-items/mine", {});
 }
 
-export function getClothingItem(token: string, id: number): Promise<ClothingItem> {
-  return apiFetch<ClothingItem>(`/api/clothing-items/${id}`, {}, token);
+export function getClothingItem(id: number): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>(`/api/clothing-items/${id}`, {});
 }
 
-export function uploadClothingItem(token: string, formData: FormData): Promise<ClothingItem> {
-  return apiFetch<ClothingItem>("/api/clothing-items", { method: "POST", body: formData }, token);
+export function uploadClothingItem(formData: FormData): Promise<ClothingItem> {
+  return apiFetch<ClothingItem>("/api/clothing-items", { method: "POST", body: formData });
 }

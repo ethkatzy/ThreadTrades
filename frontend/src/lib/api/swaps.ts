@@ -16,16 +16,16 @@ export type Swap = {
   updatedAt: string;
 };
 
-export function getSwap(token: string, matchId: number): Promise<Swap> {
-  return apiFetch<Swap>(`/api/matches/${matchId}/swap`, {}, token);
+export function getSwap(matchId: number): Promise<Swap> {
+  return apiFetch<Swap>(`/api/matches/${matchId}/swap`, {});
 }
 
-export function acceptSwap(token: string, matchId: number): Promise<Swap> {
-  return apiFetch<Swap>(`/api/matches/${matchId}/swap/accept`, { method: "PATCH" }, token);
+export function acceptSwap(matchId: number): Promise<Swap> {
+  return apiFetch<Swap>(`/api/matches/${matchId}/swap/accept`, { method: "PATCH" });
 }
 
-export function rejectSwap(token: string, matchId: number): Promise<Swap> {
-  return apiFetch<Swap>(`/api/matches/${matchId}/swap/reject`, { method: "PATCH" }, token);
+export function rejectSwap(matchId: number): Promise<Swap> {
+  return apiFetch<Swap>(`/api/matches/${matchId}/swap/reject`, { method: "PATCH" });
 }
 
 export type SwapHistoryEntry = {
@@ -39,6 +39,6 @@ export type SwapHistoryEntry = {
   completedAt: string;
 };
 
-export function listSwapHistory(token: string): Promise<SwapHistoryEntry[]> {
-  return apiFetch<SwapHistoryEntry[]>("/api/swaps/history", {}, token);
+export function listSwapHistory(): Promise<SwapHistoryEntry[]> {
+  return apiFetch<SwapHistoryEntry[]>("/api/swaps/history", {});
 }

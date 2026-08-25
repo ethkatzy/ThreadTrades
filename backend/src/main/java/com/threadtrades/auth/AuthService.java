@@ -30,7 +30,7 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthResponse register(RegisterRequest request) {
+    public AuthResult register(RegisterRequest request) {
         if (appUserRepository.existsByEmail(request.email())) {
             throw new EmailAlreadyInUseException(request.email());
         }
@@ -44,11 +44,11 @@ public class AuthService {
                 new UserProfile(appUser, request.username(), request.name()));
 
         String token = jwtService.generateToken(appUser);
-        return new AuthResponse(token, appUser.getId(), profile.getUsername(), profile.getName());
+        return new AuthResult(token, new AuthResponse(appUser.getId(), profile.getUsername(), profile.getName()));
     }
 
     @Transactional(readOnly = true)
-    public AuthResponse login(LoginRequest request) {
+    public AuthResult login(LoginRequest request) {
         AppUser appUser = appUserRepository
                 .findByEmail(request.email())
                 .filter(user -> passwordEncoder.matches(request.password(), user.getPasswordHash()))
@@ -60,6 +60,6 @@ public class AuthService {
         UserProfile profile = userProfileRepository.findByAppUserId(appUser.getId()).orElseThrow();
 
         String token = jwtService.generateToken(appUser);
-        return new AuthResponse(token, appUser.getId(), profile.getUsername(), profile.getName());
+        return new AuthResult(token, new AuthResponse(appUser.getId(), profile.getUsername(), profile.getName()));
     }
 }

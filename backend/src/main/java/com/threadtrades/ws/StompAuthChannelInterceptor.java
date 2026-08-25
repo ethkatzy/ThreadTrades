@@ -3,11 +3,9 @@ package com.threadtrades.ws;
 import com.threadtrades.match.ItemMatch;
 import com.threadtrades.match.ItemMatchRepository;
 import com.threadtrades.security.AuthenticatedUser;
-import com.threadtrades.security.JwtService;
 import com.threadtrades.user.UserProfile;
 import com.threadtrades.user.UserProfileRepository;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -18,23 +16,20 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 
 /**
- * Authenticates STOMP CONNECT frames via the same JWT used for REST calls
- * (browsers can't set custom headers on the WebSocket handshake itself, so
- * the token travels as a STOMP header instead -- see SecurityConfig, which
- * permits the raw /ws handshake and leaves enforcement to this interceptor),
- * then authorizes SUBSCRIBE frames so a client can only listen on a match
- * they're actually part of.
+ * Authenticates STOMP CONNECT frames using the session cookie read off the
+ * raw WS handshake request by SessionCookieHandshakeInterceptor (see that
+ * class -- STOMP frames themselves carry no cookie, only the underlying
+ * WebSocket session attributes do), then authorizes SUBSCRIBE frames so a
+ * client can only listen on a match they're actually part of.
  */
 @Component
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
-    private final JwtService jwtService;
     private final ItemMatchRepository itemMatchRepository;
     private final UserProfileRepository userProfileRepository;
 
     public StompAuthChannelInterceptor(
-            JwtService jwtService, ItemMatchRepository itemMatchRepository, UserProfileRepository userProfileRepository) {
-        this.jwtService = jwtService;
+            ItemMatchRepository itemMatchRepository, UserProfileRepository userProfileRepository) {
         this.itemMatchRepository = itemMatchRepository;
         this.userProfileRepository = userProfileRepository;
     }
@@ -55,11 +50,14 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     }
 
     private void authenticate(StompHeaderAccessor accessor) {
-        String header = accessor.getFirstNativeHeader("Authorization");
-        String token = header != null && header.startsWith("Bearer ") ? header.substring(7) : null;
-        AuthenticatedUser user = Optional.ofNullable(token)
-                .flatMap(jwtService::parseToken)
-                .orElseThrow(() -> new StompAuthenticationException("Missing or invalid token"));
+        // Populated by SessionCookieHandshakeInterceptor from the session cookie on the raw
+        // WS handshake request -- STOMP CONNECT frames carry no cookie of their own.
+        Object attribute = accessor.getSessionAttributes() != null
+                ? accessor.getSessionAttributes().get(WsSessionAttributes.AUTHENTICATED_USER)
+                : null;
+        if (!(attribute instanceof AuthenticatedUser user)) {
+            throw new StompAuthenticationException("Missing or invalid token");
+        }
         accessor.setUser(new UsernamePasswordAuthenticationToken(user, null, List.of()));
     }
 

@@ -79,242 +79,75 @@ dev servers against a bind-mounted source tree and are Compose/local-only).
 
 ## 3. Notes from implementation (discovered along the way)
 
-Gotchas and small unresolved trade-offs hit while building auth, upload, and the
-dashboard. Not decisions that need to be made now — just things worth knowing before
-they bite again.
+Gotchas and small trade-offs hit while building auth, upload, and the dashboard.
+Most were fixed on the spot and are recorded so the same shape of bug doesn't cost
+time twice; a handful are still live trade-offs. The **Act now?** column is my read
+on whether it's actually worth doing something about, not a status field — most
+"No"s below are already-fixed items where the row is just institutional memory.
 
-- **Server-side vs. browser API URL diverge inside Docker.** `NEXT_PUBLIC_API_URL=http://localhost:8080`
-  is correct for the browser but wrong for anything the Next.js *server process* itself
-  needs to fetch from inside the `frontend` container (its own `next/image` optimizer
-  today; any future Server Component or Route Handler that calls the backend directly
-  tomorrow) — `localhost` there means the frontend container, not `backend`. Hasn't
-  caused a real failure yet because the only server-side fetch so far was verified with
-  the frontend running on the host, not in Compose. The day server-side code needs to
-  reach the API from inside that container, it'll need its own env var pointed at
-  `http://backend:8080`.
-- **JWT lives in browser `localStorage`, not an httpOnly cookie.** A deliberate
-  minimal-scope choice to get auth working without standing up a session/cookie layer.
-  Trade-off: vulnerable to XSS token theft in a way an httpOnly cookie isn't. Revisit
-  before any real deployment (ties into deployment target, #2 above) — likely via
-  Next.js Route Handlers acting as a BFF that sets an httpOnly session cookie, per
-  Next's own authentication guide.
-- **Next.js 16's image optimizer blocks private/loopback IPs by default (SSRF guard).**
-  `localhost` triggers it, so local dev needed `images.dangerouslyAllowLocalIP: true` in
-  `next.config.ts`. Safe today because `remotePatterns` already pins requests to exactly
-  the backend's configured host/port/`/uploads/**` path — re-check that reasoning if the
-  API URL config ever becomes more dynamic (e.g. multiple allowed backends).
-- **This Spring Boot 4 / Spring Framework 7 stack runs on Jackson 3 (`tools.jackson`)
-  internally**, while the `jjwt-jackson` dependency still pulls Jackson 2
-  (`com.fasterxml.jackson`) in as a runtime-only transitive. Don't autowire
-  `com.fasterxml.jackson.databind.ObjectMapper` in tests — it's not reliably on the
-  compile classpath. Use raw JSON strings + `JsonPath` instead (see
-  `AuthControllerTest` / `ClothingItemControllerTest`).
-- **Spring Boot 4 moved MockMvc's test annotations.** `@AutoConfigureMockMvc` now lives
-  at `org.springframework.boot.webmvc.test.autoconfigure`, not the classic
-  `org.springframework.boot.test.autoconfigure.web.servlet` path.
-- **`@DynamicPropertySource` suppliers are re-invoked on every property lookup, not
-  cached once.** A supplier like `() -> ... + UUID.randomUUID()` will hand different
-  beans different values within the same test run. Compute anything that needs to stay
-  stable once into a `static final` and have the supplier just return it.
-- **Node 25 ships a native `localStorage` global that's a non-functional stub without a
-  `--localstorage-file` flag**, and it silently shadows jsdom's working implementation
-  in Vitest. Polyfilled manually in `frontend/vitest.setup.ts` — revisit if a future
-  Node/jsdom/Vitest upgrade fixes the interaction upstream.
-- **The `postgres-data` Docker volume persists across `docker compose down` and
-  rebuilds.** If `.env`'s `DB_PASSWORD` ever changes, Postgres won't pick it up (only
-  applied on first init of an empty data directory), and the backend fails to connect
-  with an auth error. Reset the volume (`docker volume rm threadtrades_postgres-data`)
-  when rotating dev credentials.
-- **The frontend dev server's logs fill up with automated internet-scanner traffic**
-  (`/api/v1/courses`, `/d2l/api/lp/1.0/enrollments/myenrollments`, `/login/token.php`,
-  all 404) once port 3000 is bound to `0.0.0.0` instead of just `localhost`. Harmless
-  noise today (nothing at those paths to exploit), but worth knowing before it's
-  mistaken for a real incident — and worth revisiting (bind to `localhost` for local-only
-  dev, or put a real reverse proxy/firewall in front) before any real deployment.
-- **Hibernate's schema validation is strict about the exact column type, not just
-  "close enough."** Mapping a Java `int` field (`Review.rating`) to a migration column
-  declared `SMALLINT` failed `ddl-auto=validate` at startup with "wrong column type
-  encountered ... found int2, but expecting integer" — Hibernate maps `int`/`Integer` to
-  `INTEGER` specifically. Match the SQL column type to what Hibernate would generate for
-  the Java type, not just something that can hold the values.
-- **The browser's `localStorage` is shared across every tab in the same Chrome profile
-  for a given origin**, regardless of which MCP tab-group or "session" a browser
-  automation tool thinks it's using. Manually testing multiple accounts in the browser
-  (e.g. verifying two sides of a swap) silently keeps reusing whichever account's JWT was
-  last stored, producing confusing 404s from unrelated backend authorization checks
-  instead of an obvious auth error. Call `localStorage.clear()` (or log out through the
-  UI) before logging in as a different test user in the same browser profile.
-- **A React unmount cleanup is not a reliable place to fire a "the user gave up, apply
-  the default" request.** The reviews feature originally tried this for the "Item
-  received" flow: leave the star form open, and an unmount effect would auto-submit a
-  default rating if the user navigated away. It only works for in-app (client-side)
-  route transitions — a hard tab close or full page navigation tears the page down
-  (or bfcache-freezes it) without ever running the cleanup, and `navigator.sendBeacon`
-  (the usual workaround for "fires on unload") can't carry a custom `Authorization`
-  header, so it can't hit an auth'd endpoint either. Replaced with an upsert: pressing
-  the button now submits the default rating immediately and synchronously, and the
-  form that follows just edits the row that already exists server-side. Prefer "make
-  the mutation happen immediately and let editing be a follow-up upsert" over "detect
-  abandonment and backfill" whenever the backend can support it.
-- **The local `mvnw` silently picks whatever JDK is first on `PATH`, not the newest one
-  installed.** Building the admin console's Flyway migrations failed with "release
-  version 21 not supported" even though a JDK 21 was already on the machine
-  (`C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot`) — the default `java` on
-  `PATH` was 19.0.2. Fix is `JAVA_HOME=<path-to-jdk-21> ./mvnw ...` per invocation; worth
-  setting `JAVA_HOME` globally if this keeps coming up.
-- **Existing Response-record `from(...)` factory methods default to package-private**,
-  which blocks reuse from a new cross-cutting package. Reusing `MessageResponse`/
-  `ReviewResponse` as-is for the admin endpoints (rather than duplicating near-identical
-  DTOs) required widening their `from()` methods to `public`, matching
-  `ClothingItemResponse.from()`, which was already public. If a future feature wants to
-  reuse another domain's response DTO, check its `from()` visibility first.
-- **`item_match`'s FKs to `clothing_item` are `ON DELETE CASCADE`**, so an admin
-  "remove item" action can't be a real `DELETE` without silently cascading away that
-  item's match/swap/message history too. Implemented as a status flag
-  (`ItemStatus.REMOVED`) instead, consistent with how `Swap`/`Review` already favor
-  real state over deletion. Same reasoning would apply to any future hard-delete admin
-  action on an entity with inbound FKs — check `V1__init_schema.sql`'s `ON DELETE`
-  behavior before adding one.
-- **Enum-like columns are plain `VARCHAR` + a `CHECK` constraint, not a native Postgres
-  enum type** (deliberate, per `V1`'s header comment). Adding a new allowed value
-  (`ItemStatus.REMOVED`) means `DROP CONSTRAINT` + `ADD CONSTRAINT` in a new migration,
-  and Postgres's default auto-generated name for a constraint added via
-  `ADD COLUMN ... CHECK (...)` with no explicit name is `<table>_<column>_check`
-  (confirmed working as `clothing_item_status_check` from `V3`) — get that name wrong
-  and the `DROP CONSTRAINT` migration fails outright rather than silently no-op-ing.
-- **`JwtAuthenticationFilter` went from zero DB hits per request to one**, to support
-  banning a user mid-session (their already-issued JWT gets rejected on the next
-  request, not just at their next login). Previously auth was pure stateless JWT-claim
-  decoding with no database round-trip at all. This is a real per-request cost added
-  app-wide, not just on `/api/admin/**` — worth revisiting (e.g. a short-lived cache of
-  banned user ids) if request volume ever makes it matter; harmless at today's scale.
-- **A JPQL parameter used only behind an `IS NULL` branch (no other typed usage)
-  breaks on this Hibernate 7 + Postgres stack.** `UserProfileRepository.searchForAdmin`
-  originally had `WHERE :query IS NULL OR LOWER(...) LIKE ... :query ...` so an
-  unfiltered admin user list could return everything — but binding a raw `null` for
-  `:query` left Hibernate/pgjdbc unable to infer its JDBC type, and it resolved to
-  `bytea`, breaking every `LOWER(...)` call in the same query with `function lower(bytea)
-  does not exist`. Symptom was confusing: the client saw a 401 "Unauthorized" (Spring's
-  entry point) rather than an obvious 500, because the exception surfaced deep in request
-  processing after auth had already succeeded. Fixed by never binding a raw null:
-  the service always passes `""` instead, and the query dropped the `IS NULL` branch
-  entirely (`LIKE '%%'` already matches everything). Whenever a JPQL parameter's *only*
-  role in a query is a null-check with no other typed context, expect this on Postgres —
-  bind a real typed value instead, don't rely on the null flowing through.
-- **`next/image`'s optimizer fetches the source image server-side**, i.e. from inside
-  the `frontend` container when running via Docker Compose. `NEXT_PUBLIC_API_URL=
-  http://localhost:8080` is correct for the browser's own direct API calls but wrong for
-  that server-side fetch (nothing listens on the frontend container's own loopback:8080)
-  — this is the scenario ROADMAP already flagged as a future risk (see the "Server-side
-  vs. browser API URL diverge inside Docker" note above) and it finally got hit, once
-  everything actually ran together via `docker compose up` for the first time rather than
-  frontend-on-host + backend-in-Docker. Manifested as every clothing-item image in the
-  app (not just one page) rendering as a broken-image icon. Fixed for now with
-  `images.unoptimized: true` in `next.config.ts`, which makes the browser fetch images
-  directly from the published host port instead of through Next's server-side proxy —
-  works in both Docker Compose and host-only dev, at the cost of losing automatic
-  resize/format conversion. Revisit with a container-internal image-origin env var
-  (safe to point at `http://backend:8080` even though that only resolves inside the
-  Compose network, since the raw string is only ever dereferenced server-side, never
-  fetched by the browser directly) if the optimization is ever worth it.
-- **The homepage dashboard's "needs action" and "recently active" sections are built by
-  fetching `listMatches` once and then `Promise.all`-ing a `getSwap` + `listMessages`
-  call per match** — no backend endpoint returns matches pre-enriched with swap status
-  or last-message data, and there's no read/unread tracking anywhere in the schema
-  (confirmed by grep: no `read`/`readAt` field on `Message` or elsewhere), which is why
-  that section is labeled "Recently active" rather than "Unread." Fine at MVP match
-  volumes since each sub-fetch fails independently (a broken `getSwap` for one match
-  doesn't blank the page), but this is an N+1 fetch that will visibly slow the homepage
-  as match counts grow — revisit with a backend enrichment endpoint (e.g. `GET
-  /api/matches` returning embedded `swap`/`lastMessage` fields, or a dedicated
-  aggregate endpoint) if that happens, and consider adding real read-tracking then too.
-- **The homepage's swipe-deck teaser auto-picks the first `AVAILABLE` item from the
-  user's own clothing list as the `offeredItemId`** for `getSwipeDeck`, since the deck
-  endpoint requires one and there's no server-side concept of a "default" item to
-  swipe with. It's a client-side heuristic (first item in whatever order `GET
-  /api/clothing-items/mine` returns), not anything meaningful about user intent —
-  revisit if it turns out to pick a bad representative item once users have many items
-  (e.g. let the user pick, or rotate which item is teased).
-- **Turbopack's dev-server file watcher can silently stop picking up edits to an
-  already-compiled route on this Windows + Docker Compose bind-mount setup.** Editing
-  `frontend/src/app/page.tsx` from the host (outside the container) showed up correctly
-  inside the container's filesystem (`docker compose exec frontend cat ...` confirmed
-  it), and the container logged "Fast Refresh done," but the browser kept serving the
-  pre-edit page indefinitely — even after a hard reload (Ctrl+Shift+R). Only a full
-  `docker compose restart frontend` (forcing a fresh `next dev` boot, not just a
-  refresh) made the new code actually render. Root cause not confirmed (likely
-  Turbopack's persistent filesystem cache — note the earlier "Finished filesystem cache
-  database compaction" log line — disagreeing with a Windows bind-mount's file-change
-  events), but the symptom is misleading: no compile error, a real "Fast Refresh done"
-  log, yet stale output. If a change to a long-running dev container's route "isn't
-  showing up" with no error anywhere, restart the frontend container before assuming
-  the code itself is wrong.
-- **Appending a conflicting Tailwind utility via a trailing `className` string does not
-  reliably override a component's baked-in classes.** The new `Button` component
-  originally hardcoded `px-4 py-2 text-sm`; call sites that tried to shrink it for
-  inline chip-style buttons (e.g. `className="px-3 py-1.5 text-xs"` appended after the
-  component's own classes) had no guarantee of winning, because Tailwind's generated
-  CSS order is based on when each utility was first encountered across the whole build,
-  not on where the class appears in a given element's `className` string — DOM/string
-  order does not imply cascade order for same-specificity utility classes. Fixed by
-  giving `Button`/`ButtonLink` (`frontend/src/components/Button.tsx`) an explicit
-  `size` prop (`"md" | "sm"`) with a size→class lookup table, so the whole
-  padding/text-size declaration swaps as one unit instead of trying to override
-  individual utilities. Any future component with a "default" size/spacing baked into
-  its base classes should take a `size`/variant prop for known deviations rather than
-  expecting an appended `className` override to win — and where a call site's need is
-  a one-off (e.g. the swipe deck's large circular Like/Pass buttons), it's safer to not
-  route it through the shared component at all than to fight the cascade.
-- **Two adjacent elements both styled with the same theme-token background can render
-  as an invisible box.** After introducing a `--surface` token (one step lighter than
-  `--background`) for both card containers (`Card`) and item-thumbnail placeholders,
-  wrapping a thumbnail inside a card made the thumbnail's placeholder background
-  disappear — same `bg-surface` value on both, zero visible edge, so a slow-loading or
-  broken image looked like empty space rather than a loading placeholder (caught
-  visually in the browser, not by tests/lint/build, none of which render two nested
-  same-color boxes). Fixed by adding `border border-border` to
-  `frontend/src/app/page.tsx`'s `ItemThumbnail` and the equivalent thumbnails in
-  `frontend/src/app/profile/page.tsx`'s swap-history list (both nest inside `Card`);
-  `frontend/src/app/matches/page.tsx` instead swaps the nested thumbnail to
-  `bg-background` since it's always inside a `Card` there. Whenever a themed
-  placeholder/avatar box is nested inside another element using the same background
-  token, give the inner box a border (or a contrasting token) rather than assuming the
-  two surfaces will read as distinct — check this visually, since nothing else catches
-  it.
+### Security
 
-- **Every image URL in the frontend assumed a relative `/uploads/...` path and
-  string-concatenated it onto `NEXT_PUBLIC_API_URL`** (14 call sites across 9 files —
-  `${API_BASE_URL}${item.imageUrl}`), because `LocalDiskStorageService` only ever
-  handed back a relative path. `R2StorageService` hands back an already-absolute
-  URL on R2's own domain, so that concatenation would have produced garbage like
-  `https://api.example.com/https://pub-xyz.r2.dev/...` the moment `STORAGE_PROVIDER=r2`.
-  Fixed by adding `frontend/src/lib/media.ts`'s `mediaUrl()` (absolute-URL passthrough,
-  else prefix with the API origin) and routing every call site through it. Any new
-  image-URL call site must use `mediaUrl()`, never re-derive the API-prefixed string
-  directly — the storage backend's URL shape is an implementation detail the frontend
-  shouldn't assume.
-- **Render forwards a Docker service's environment variables into the image build
-  only for env vars re-declared as `ARG` in the Dockerfile with a matching name** —
-  it doesn't pass everything by default. `NEXT_PUBLIC_*` vars are inlined into the
-  Next.js client bundle at `next build` time, not read at container start, so
-  `frontend/Dockerfile` declares `ARG NEXT_PUBLIC_API_URL` / `ARG
-  NEXT_PUBLIC_STORAGE_PUBLIC_URL` before `RUN npm run build` specifically so Render's
-  forwarding kicks in. Changing either value later needs a rebuild (redeploy), not
-  just a restart — a plain restart keeps serving the old baked-in value.
-- **Cloudflare R2's S3-compatible API still requires a non-empty AWS SDK `Region`
-  to sign requests, even though R2 itself is regionless.** `R2StorageService` passes
-  the literal string `"auto"` (`Region.of("auto")`) per Cloudflare's own S3-API docs —
-  any non-empty value would satisfy the SDK's signing code, but `"auto"` is what R2
-  documents and other tools expect, so stick with it rather than e.g. `"us-east-1"`.
-- **Hosted Postgres (Neon, Supabase) requires TLS; the local Compose Postgres
-  doesn't have it configured at all.** The datasource URL didn't carry an `sslmode`
-  param before this change, which would have failed to connect against either
-  provider. Added `DB_SSLMODE` (default `disable`, matching Compose's plain
-  Postgres) appended as `?sslmode=${DB_SSLMODE:disable}` on the JDBC URL — set it to
-  `require` in Render's env vars for the backend service. Neon/Supabase hand you a
-  single `postgresql://user:pass@host/db?sslmode=require` connection string, not
-  the decomposed `DB_HOST`/`DB_NAME`/`DB_USERNAME`/`DB_PASSWORD` this app's config
-  expects — split it by hand when copying values into Render's dashboard.
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| ~~JWT lives in browser `localStorage`, not an httpOnly cookie~~ — **Fixed (2026-08-25).** The backend now sets the JWT as an httpOnly `tt_session` cookie (`SessionCookieService`) on login/register instead of returning it in the JSON body; the frontend dropped all token plumbing and just uses `credentials: "include"` on every fetch (`client.ts`). | Session/auth security for every logged-in user. | Done — see the implementation-gotcha rows below for what it actually took. | **No**, done. Cookie flags are configurable (`COOKIE_SECURE`/`COOKIE_SAME_SITE`, `.env.example`) — `false`/`Lax` locally, `true`/`None` on Render. |
+| Moving auth to a cookie reopens CSRF (a cookie rides along on cross-site requests automatically; a bearer header never did). | Every mutating (`POST`/`PATCH`/`DELETE`) endpoint, especially the multipart upload/profile-picture ones — `multipart/form-data` is a CORS-preflight-exempt "simple" content type, so without CSRF protection a hidden cross-site form could trigger those even though JSON endpoints happen to be preflight-guarded already. | Spring Security 7 ships a purpose-built `.csrf(csrf -> csrf.spa())` preset for exactly this (SPA + cookie auth): a JS-readable `XSRF-TOKEN` cookie + `X-XSRF-TOKEN` header double-submit check. | **No**, done — wired into `SecurityConfig`, frontend reads the cookie and echoes the header in `client.ts` for every non-GET request. |
+| **`csrf.spa()` alone never actually issues the `XSRF-TOKEN` cookie on a pure REST API.** Spring Security's cookie-backed CSRF token is generated lazily — the cookie is only written once something calls `CsrfToken#getToken()`, which normally happens when a server-rendered form reads `${_csrf.token}`. A JSON API never does that, so nothing would trigger it. | Any cookie-based CSRF setup on a backend with no server-rendered views. | Add a small `OncePerRequestFilter` (`CsrfCookieFilter`) that unconditionally calls `.getToken()` on every request, forcing the write. This is Spring Security's own documented fix for SPA clients, not a local workaround. | **No**, done (`CsrfCookieFilter`, `addFilterAfter(..., BasicAuthenticationFilter.class)` — that anchor class doesn't need to be otherwise enabled; Spring Security pre-registers a fixed order for all known filter classes regardless). |
+| **A CSRF failure surfaces as `401 Unauthorized`, not `403 Forbidden`.** `CsrfFilter` runs earlier in the chain than this app's own `JwtAuthenticationFilter`, so when CSRF validation fails the `SecurityContext` is still anonymous — Spring Security routes an `AccessDeniedException` with no authenticated principal to the `AuthenticationEntryPoint` instead of the `AccessDeniedHandler`. | Debugging any "why am I getting 401 on a request that should just need a fresh cookie" symptom. | None — just know this mapping exists. | **No.** Cost real time in `WebSocketMessagingTest` (looked like a broken session cookie, was actually a missing `X-XSRF-TOKEN`) — worth remembering before assuming a stray 401 means the session cookie itself is bad. |
+| STOMP CONNECT frames carry no cookie of their own (they're not HTTP requests) — the old design carried the JWT as a STOMP `Authorization` header instead, which no longer exists once the token lives in an httpOnly cookie the client can't read. | WebSocket auth (`StompAuthChannelInterceptor`). | A `HandshakeInterceptor` (`SessionCookieHandshakeInterceptor`) reads the session cookie off the raw WS handshake request (browsers attach cookies to that handshake automatically, same as any other request) and stashes the parsed user in the WebSocket session's `attributes`, which Spring copies onto every STOMP frame's `accessor.getSessionAttributes()` in that session. | **No**, done. Cross-site WS hijacking is separately guarded by `setAllowedOrigins(...)` on the STOMP endpoint (checked against the `Origin` header, which — unlike cookies — a page can't spoof), so this didn't need its own CSRF-equivalent. |
+| **`TestRestTemplate` has no cookie jar** (unlike a browser, it won't remember or replay `Set-Cookie` values between requests). | `WebSocketMessagingTest`, the one test class that can't use MockMvc's `SecurityMockMvcRequestPostProcessors.csrf()` shortcut (it drives real sockets over a random port). | Manually extract both the `tt_session` and `XSRF-TOKEN` cookie values from each response and replay them (`Cookie` header for both + `X-XSRF-TOKEN` header) on every subsequent call — see `WebSocketMessagingTest.Session`/`authHeaders()`. | **No**, done. A related trap: a single response can carry **two** `Set-Cookie` headers for the same cookie name (e.g. register returns a clearing `XSRF-TOKEN=;` from `CsrfFilter`'s exemption handling for that path, immediately followed by a fresh one from `CsrfCookieFilter` forcing eager generation) — a real browser's cookie jar just nets these out to the last value, so the test's extraction helper has to explicitly skip empty values and take the last match rather than the first. |
+| Render's two services (`*.onrender.com`) are on the Public Suffix List, so they're cross-**site**, not just cross-origin — `SameSite=Lax` would silently stop the browser from ever attaching the cookie to the frontend's fetch calls to the backend at all (Lax only allows cross-site *top-level navigations*, not subresource fetches), breaking auth entirely, not just reopening CSRF. | Production cookie behavior specifically (local dev has both services under `localhost`, which **is** same-site regardless of port, so this doesn't reproduce there). | `SameSite=None` (requires `Secure`) in production; `Lax` is fine locally. | **No**, done — `COOKIE_SAME_SITE=None` set in `render.yaml` for the backend service, default stays `Lax` locally. |
+| Every `/admin/*` page had its own `if (!token) return` guard on each data-fetching effect, left over from when `token` (not `user`) was the thing `useAuth()` exposed — but `AdminLayout` already blocks rendering `children` at all until `user` is a confirmed `ADMIN` (see its own comment: "the one place the admin role check happens"). | Code cleanliness only, once `token` stopped existing on the auth context. | Drop the redundant per-page guards instead of swapping them to check `user`. | **No**, done — simplified while migrating off `token`, not a new decision. |
+
+### Docker / dev infra
+
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| Server-side vs. browser API URL diverge inside Docker — `NEXT_PUBLIC_API_URL=http://localhost:8080` is wrong for anything the Next.js *server process* fetches from inside the `frontend` container. | Any future Server Component / Route Handler that calls the backend directly under Docker Compose. | A container-internal env var pointed at `http://backend:8080` for server-side fetches. | **No.** The one place this actually bit (the `next/image` optimizer) is already fixed separately (see the R2/image-URL row below), and no Server Component/Route Handler exists yet that needs it. Revisit only when one is added. |
+| Next.js 16's image optimizer blocks private/loopback IPs by default (SSRF guard); local dev needed `images.dangerouslyAllowLocalIP: true`. | Local dev image loading. | None — likely moot. | **No.** `images.unoptimized: true` (added later, see below) disables the optimizer proxy entirely, so this flag probably isn't doing anything anymore. Worth a quick check next time `next.config.ts` is touched, but not a functional risk either way. |
+| The `postgres-data` Docker volume persists across `docker compose down`/rebuild, so a changed `DB_PASSWORD` in `.env` doesn't take effect and the backend fails to connect. | Local dev only, when rotating dev DB credentials. | Document the `docker volume rm threadtrades_postgres-data` fix; could script it. | **No.** Known one-line fix, rare trigger (only on credential rotation), not worth automating for a solo-dev project. |
+| Frontend dev server logs fill with automated internet-scanner 404 traffic once port 3000 is bound to `0.0.0.0`. | Local dev log noise; was flagged as a pre-deployment concern. | Bind to `localhost` for local-only dev, or front with a reverse proxy/firewall. | **No.** Superseded by the deployment decision (#2) — Render terminates and manages public ingress itself, so the raw "service bound to 0.0.0.0 on the open internet" scenario this described no longer applies the way it did for bare local dev. |
+| Turbopack's dev-server file watcher can silently stop picking up edits on this Windows + Docker Compose bind-mount setup — Fast Refresh logs "done" but the browser keeps serving stale output. | Local dev iteration speed when it happens. | Root cause unconfirmed (likely Turbopack's persistent FS cache vs. Windows bind-mount file events). | **No.** Known workaround (`docker compose restart frontend`) is fast enough; not worth debugging Turbopack internals for a local-only quirk. |
+
+### Backend / Hibernate / JPA
+
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| Spring Boot 4 runs Jackson 3 internally, but `jjwt-jackson` pulls in Jackson 2 transitively — autowiring `com.fasterxml.jackson...ObjectMapper` in tests isn't reliable. | Test code only. | None — already worked around with raw JSON + `JsonPath`. | **No.** Resolved convention; only resurfaces if `jjwt-jackson` ever ships a Jackson-3-native build. |
+| Spring Boot 4 moved `@AutoConfigureMockMvc` to `org.springframework.boot.webmvc.test.autoconfigure`. | Import paths in new test classes. | None. | **No.** Just a fact to remember. |
+| `@DynamicPropertySource` suppliers re-run on every property lookup, not once — non-idempotent suppliers (e.g. with `UUID.randomUUID()`) hand different beans different values. | Test config correctness. | None — already worked around with a `static final`. | **No.** Resolved convention. |
+| Hibernate's `ddl-auto=validate` is strict about exact column type — a Java `int` needs SQL `INTEGER`, not just anything that fits (e.g. `SMALLINT` failed). | Any migration backing an `int`/`Integer` field. | None — already fixed. | **No.** Just a rule to remember when writing the next migration. |
+| Existing Response-record `from(...)` factories default to package-private, blocking reuse from a new cross-cutting package (hit when the admin endpoints wanted to reuse `MessageResponse`/`ReviewResponse`). | Cross-package DTO reuse. | None — already widened to `public` where needed. | **No.** Just check visibility first next time a DTO is reused from a new package. |
+| `item_match`'s FKs to `clothing_item` are `ON DELETE CASCADE`, so a real `DELETE` on an item would silently cascade away its match/swap/message history. | Any hard-delete admin action on an entity with inbound FKs. | None — status flags (`ItemStatus.REMOVED`) already used instead, consistent with `Swap`/`Review`. | **No.** This is the correct design already in place, not a defect. |
+| Enum-like columns are `VARCHAR` + `CHECK`, not a native Postgres enum (deliberate, per `V1`'s header comment) — adding a value means `DROP`/`ADD CONSTRAINT` and getting Postgres's auto-generated constraint name right. | Any future new enum value on an existing column. | None — working as designed. | **No.** Deliberate trade-off; just remember the migration mechanics. |
+| `JwtAuthenticationFilter` now does one DB hit per request (to support mid-session bans), where auth was previously pure stateless JWT decoding. | Per-request latency, app-wide (not just `/api/admin/**`). | A short-lived cache of banned user ids. | **No.** Harmless at portfolio-project request volumes; only worth it if real traffic ever materializes. |
+| A JPQL parameter used only behind an `IS NULL` branch (no other typed usage) breaks on Hibernate 7 + Postgres — a raw `null` bind resolves to `bytea` and every `LOWER(...)` in the query fails, surfacing confusingly as a 401 instead of a 500. | Any future JPQL query with an optional/nullable filter param. | None — already fixed (`searchForAdmin` now always binds `""`, dropped the `IS NULL` branch). | **No.** Fixed at the one call site; useful pattern to recognize if it happens again elsewhere. |
+
+### Storage / deployment
+
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| `next/image`'s optimizer fetches images server-side, which broke every clothing-item image (broken-image icon app-wide) the first time frontend+backend both ran inside Docker Compose. | Image rendering when self-hosting via Compose. | Fixed with `images.unoptimized: true` (loses auto resize/format conversion); a container-internal image-origin env var would restore optimization. | **No.** In production, `mediaUrl()` (below) already serves images directly from R2's absolute URL, bypassing the Next optimizer entirely — the lost optimization only matters for local Compose dev, which works fine as-is. |
+| Every frontend image URL assumed a relative `/uploads/...` path and string-concatenated it onto the API base URL (14 call sites) — would have produced broken URLs the moment `STORAGE_PROVIDER=r2` started returning absolute URLs. | All clothing-item/profile image rendering. | None — already fixed via `frontend/src/lib/media.ts`'s `mediaUrl()`, routed through everywhere. | **No.** Fixed and enforced by convention; just don't bypass `mediaUrl()` in new call sites. |
+| Render only forwards a service's env vars into the *image build* for vars re-declared as `ARG` in the Dockerfile — `NEXT_PUBLIC_*` vars are baked in at `next build` time, not read at container start. | Changing any `NEXT_PUBLIC_*` value in prod. | None — already declared as `ARG` in `frontend/Dockerfile`. | **No.** Just remember a value change needs a rebuild/redeploy, not a restart. |
+| Cloudflare R2's S3-compatible API still requires a non-empty AWS SDK `Region` to sign requests, even though R2 is regionless. | R2 storage config. | None — `Region.of("auto")` already used per Cloudflare's docs. | **No.** Already correct. |
+| Hosted Postgres (Neon/Supabase) requires TLS; local Compose Postgres has none configured, and the two use different connection-string shapes (single URL vs. decomposed host/name/user/password). | DB connectivity in production vs. local dev. | None — already fixed with `DB_SSLMODE` (`disable` locally, `require` on Render), split by hand from the provider's connection string. | **No.** Already correct; just remember the manual split when copying values into Render's dashboard. |
+
+### Frontend UI/UX
+
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| Appending a conflicting Tailwind utility via a trailing `className` doesn't reliably override a component's baked-in classes — CSS order depends on first-encountered-in-build, not DOM string order. | Any component with baked-in default sizing/spacing. | None — already fixed via an explicit `size` prop + lookup table on `Button`/`ButtonLink`. | **No.** Fixed with a real pattern (variant prop); just follow it for new components instead of fighting the cascade. |
+| Two adjacent elements using the same theme-token background (e.g. `--surface` on both `Card` and a nested thumbnail placeholder) can render as an invisible box with no visible loading state. | Any nested themed placeholder/avatar — currently the homepage and profile swap-history thumbnails. | None — already fixed with a border or contrasting token at the known sites. | **No.** Fixed at all current sites; worth a visual check (nothing automated catches it) any time a new nested placeholder is added. |
+| The homepage's "needs action"/"recently active" sections do `listMatches` then `Promise.all(getSwap + listMessages)` per match — an N+1 fetch, since no endpoint returns matches pre-enriched and there's no read/unread tracking in the schema at all. | Homepage load time as match count grows; also why the section says "Recently active" instead of "Unread." | A backend enrichment endpoint (e.g. `GET /api/matches` with embedded `swap`/`lastMessage`) and real read-tracking. | **No.** Genuinely fine at MVP/portfolio match volumes and fails gracefully per-match. Worth doing if this ever becomes more than a demo, or as a "look, I know how to fix an N+1" portfolio talking point — but not because it's currently causing a problem. |
+| The swipe-deck teaser on the homepage auto-picks the first `AVAILABLE` item from the user's own list as the offered item — a client-side heuristic, not real intent. | Homepage swipe teaser UX when a user has several items. | Let the user pick, or rotate which item is teased. | **No.** Cosmetic; revisit only if it turns out to pick a visibly bad representative item once someone has many items. |
+
+### Testing (manual/automation-only, no code implications)
+
+| Problem | Affects | Possible change | Act now? |
+|---|---|---|---|
+| Node 25 ships a native `localStorage` stub that silently shadows jsdom's working implementation in Vitest unless polyfilled. | Frontend test setup. | None — already polyfilled in `frontend/vitest.setup.ts`. | **No.** Revisit only if a future Node/jsdom/Vitest upgrade fixes it upstream (could then drop the polyfill). |
+| The browser's `localStorage` is shared across every tab in the same Chrome profile for a given origin, regardless of which automation "session" is in use — manual multi-account testing silently reuses whichever JWT was last stored. | Manual/browser-automation testing of multi-user flows (e.g. both sides of a swap). | None — call `localStorage.clear()` (or log out) before switching test users. | **No.** Testing-procedure note, not a code issue. |
+| The local `mvnw` picks whichever JDK is first on `PATH`, not necessarily the newest installed — failed a build with "release version 21 not supported" despite JDK 21 being present. | Local backend builds. | Set `JAVA_HOME` globally instead of per-invocation. | **No.** Per-invocation `JAVA_HOME=<jdk21> ./mvnw` fix is enough; only worth a global env var if this keeps recurring. |
 
 ## 4. Further changes
 * Documentation

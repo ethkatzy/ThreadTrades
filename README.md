@@ -4,6 +4,14 @@ A Tinder-style clothing-swap app: upload an item, swipe, match, message, and arr
 swap. This is a from-scratch rewrite of an earlier student project — see `AUDIT.md` for
 the audit of that codebase and `ROADMAP.md` for deferred decisions and current status.
 
+## Live demo
+
+- Frontend: https://threadtrades-frontend.onrender.com
+- Backend: https://threadtrades-backend.onrender.com
+
+Hosted on Render's free tier, so the first request after a period of inactivity can
+take up to a minute while the service spins back up.
+
 ## Prerequisites
 
 - Docker and Docker Compose

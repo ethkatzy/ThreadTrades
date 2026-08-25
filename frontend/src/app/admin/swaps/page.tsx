@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { Pagination } from "@/components/Pagination";
 import { listAdminSwaps, type AdminSwap } from "@/lib/api/admin";
 import type { PagedResponse } from "@/lib/api/admin";
@@ -12,23 +11,19 @@ import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 const STATUS_OPTIONS: Array<SwapStatus | ""> = ["", "PENDING", "ACCEPTED", "REJECTED"];
 
 export default function AdminSwapsPage() {
-  const { token } = useAuth();
   const [result, setResult] = useState<PagedResponse<AdminSwap> | null>(null);
   const [page, setPage] = useState(0);
   const [status, setStatus] = useState<SwapStatus | "">("PENDING");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    listAdminSwaps(token, page, 20, status || undefined)
+    listAdminSwaps(page, 20, status || undefined)
       .then((r) => {
         setResult(r);
         setError(null);
       })
       .catch(() => setError("Couldn't load swaps."));
-  }, [token, page, status]);
+  }, [page, status]);
 
   return (
     <div className="flex flex-col gap-4">

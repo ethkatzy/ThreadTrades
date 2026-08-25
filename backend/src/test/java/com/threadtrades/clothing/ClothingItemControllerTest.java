@@ -5,9 +5,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import com.jayway.jsonpath.JsonPath;
 import com.threadtrades.TestcontainersConfiguration;
+import com.threadtrades.security.SessionCookieService;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,29 +40,28 @@ class ClothingItemControllerTest {
         registry.add("app.storage.local-path", () -> STORAGE_LOCAL_PATH);
     }
 
-    private String registerAndGetToken(String email, String username) throws Exception {
+    private Cookie registerAndGetToken(String email, String username) throws Exception {
         String registerJson =
                 """
                 {"email":"%s","password":"hunter2pass","username":"%s","name":"Test User"}
                 """
                         .formatted(email, username);
-        String responseJson = mockMvc.perform(post("/api/auth/register")
+        return mockMvc.perform(post("/api/auth/register").with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(registerJson))
                 .andExpect(status().isCreated())
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
-        return JsonPath.read(responseJson, "$.token");
+                .getCookie(SessionCookieService.COOKIE_NAME);
     }
 
     @Test
     void uploadThenFetchByIdAndImage() throws Exception {
-        String token = registerAndGetToken("dana@example.com", "dana");
+        Cookie token = registerAndGetToken("dana@example.com", "dana");
         MockMultipartFile image =
                 new MockMultipartFile("image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
 
-        String uploadResponseJson = mockMvc.perform(multipart("/api/clothing-items")
+        String uploadResponseJson = mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(image)
                         .param("name", "Denim Jacket")
                         .param("brand", "Levi's")
@@ -69,7 +71,7 @@ class ClothingItemControllerTest {
                         .param("colour", "Blue")
                         .param("condition", "GOOD")
                         .param("gender", "UNISEX")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Denim Jacket"))
                 .andExpect(jsonPath("$.itemType").value("Jacket"))
@@ -84,11 +86,11 @@ class ClothingItemControllerTest {
         Integer id = JsonPath.read(uploadResponseJson, "$.id");
         String imageUrl = JsonPath.read(uploadResponseJson, "$.imageUrl");
 
-        mockMvc.perform(get("/api/clothing-items/" + id).header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/clothing-items/" + id).cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Denim Jacket"));
 
-        mockMvc.perform(get("/api/clothing-items/mine").header("Authorization", "Bearer " + token))
+        mockMvc.perform(get("/api/clothing-items/mine").cookie(token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(id));
 
@@ -101,51 +103,51 @@ class ClothingItemControllerTest {
 
     @Test
     void uploadRejectsUnsupportedImageType() throws Exception {
-        String token = registerAndGetToken("erin@example.com", "erin");
+        Cookie token = registerAndGetToken("erin@example.com", "erin");
         MockMultipartFile file =
                 new MockMultipartFile("image", "notes.txt", "text/plain", "not an image".getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(file)
                         .param("name", "Bad Upload")
                         .param("itemType", "Jacket")
                         .param("clothingSize", "M")
                         .param("condition", "GOOD")
                         .param("gender", "UNISEX")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isUnsupportedMediaType());
     }
 
     @Test
     void uploadRejectsBlankRequiredField() throws Exception {
-        String token = registerAndGetToken("gail@example.com", "gail");
+        Cookie token = registerAndGetToken("gail@example.com", "gail");
         MockMultipartFile image =
                 new MockMultipartFile("image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(image)
                         .param("name", "")
                         .param("itemType", "Jacket")
                         .param("clothingSize", "M")
                         .param("condition", "GOOD")
                         .param("gender", "UNISEX")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
     void uploadRejectsMissingRequiredField() throws Exception {
-        String token = registerAndGetToken("frank@example.com", "frank");
+        Cookie token = registerAndGetToken("frank@example.com", "frank");
         MockMultipartFile image =
                 new MockMultipartFile("image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(image)
                         .param("name", "Missing Fields")
                         .param("clothingSize", "M")
                         .param("condition", "GOOD")
                         .param("gender", "UNISEX")
-                        .header("Authorization", "Bearer " + token))
+                        .cookie(token))
                 .andExpect(status().isBadRequest());
     }
 
@@ -154,7 +156,7 @@ class ClothingItemControllerTest {
         MockMultipartFile image =
                 new MockMultipartFile("image", "photo.jpg", "image/jpeg", "fake-jpeg-bytes".getBytes(StandardCharsets.UTF_8));
 
-        mockMvc.perform(multipart("/api/clothing-items")
+        mockMvc.perform(multipart("/api/clothing-items").with(csrf())
                         .file(image)
                         .param("name", "No Auth")
                         .param("itemType", "Jacket")
@@ -166,8 +168,8 @@ class ClothingItemControllerTest {
 
     @Test
     void getByIdReturnsNotFoundForUnknownItem() throws Exception {
-        String token = registerAndGetToken("gina@example.com", "gina");
-        mockMvc.perform(get("/api/clothing-items/999999").header("Authorization", "Bearer " + token))
+        Cookie token = registerAndGetToken("gina@example.com", "gina");
+        mockMvc.perform(get("/api/clothing-items/999999").cookie(token))
                 .andExpect(status().isNotFound());
     }
 }

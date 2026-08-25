@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/components/AuthProvider";
 import { getAdminMatch, type AdminMatch } from "@/lib/api/admin";
 import { StatusBadge, swapStatusTone } from "@/components/StatusBadge";
 
 export default function AdminMatchDetailPage() {
-  const { token } = useAuth();
   const params = useParams<{ id: string }>();
   const matchId = Number(params.id);
 
@@ -16,13 +14,10 @@ export default function AdminMatchDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
-    getAdminMatch(token, matchId)
+    getAdminMatch(matchId)
       .then(setMatch)
       .catch(() => setError("Couldn't load this match."));
-  }, [token, matchId]);
+  }, [matchId]);
 
   if (error) {
     return <p className="text-sm text-red-600">{error}</p>;

@@ -15,10 +15,10 @@ export type Match = {
   createdAt: string;
 };
 
-export function listMatches(token: string): Promise<Match[]> {
-  return apiFetch<Match[]>("/api/matches", {}, token);
+export function listMatches(): Promise<Match[]> {
+  return apiFetch<Match[]>("/api/matches", {});
 }
 
-export function getMatchOtherUser(token: string, matchId: number): Promise<UserProfile> {
-  return apiFetch<UserProfile>(`/api/matches/${matchId}/other-user`, {}, token);
+export function getMatchOtherUser(matchId: number): Promise<UserProfile> {
+  return apiFetch<UserProfile>(`/api/matches/${matchId}/other-user`, {});
 }

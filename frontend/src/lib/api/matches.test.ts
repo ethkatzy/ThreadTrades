@@ -6,14 +6,14 @@ describe("matches api", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches the caller's matches with auth header", async () => {
+  it("fetches the caller's matches with credentials included", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify([]), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await listMatches("abc123");
+    await listMatches();
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("http://localhost:8080/api/matches");
-    expect((init.headers as Headers).get("Authorization")).toBe("Bearer abc123");
+    expect(init.credentials).toBe("include");
   });
 });

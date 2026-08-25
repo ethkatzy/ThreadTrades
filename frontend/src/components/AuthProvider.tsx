@@ -4,23 +4,21 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import {
   getCurrentUser,
   login as apiLogin,
+  logout as apiLogout,
   register as apiRegister,
   updateProfile as apiUpdateProfile,
-  type AuthResponse,
   type LoginInput,
   type RegisterInput,
   type UserProfile,
 } from "@/lib/api/auth";
-import { clearStoredToken, getStoredToken, setStoredToken } from "@/lib/api/token";
 
 type AuthContextValue = {
-  token: string | null;
   user: UserProfile | null;
   isLoading: boolean;
   login: (input: LoginInput) => Promise<void>;
   register: (input: RegisterInput) => Promise<void>;
   updateProfile: (formData: FormData) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,68 +32,39 @@ export function useAuth(): AuthContextValue {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // localStorage can't be read during SSR/first render (no hydration
-    // mismatch that way), so this has to resolve client-side in an effect.
-    const storedToken = getStoredToken();
-    if (!storedToken) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
-      setIsLoading(false);
-      return;
-    }
-    getCurrentUser(storedToken)
-      .then((profile) => {
-        setToken(storedToken);
-        setUser(profile);
-      })
-      .catch(() => {
-        clearStoredToken();
-      })
+    // The session lives in an httpOnly cookie the client can't read directly, so the only way
+    // to know if we're logged in on first load is to just ask the server.
+    getCurrentUser()
+      .then(setUser)
+      .catch(() => setUser(null))
       .finally(() => setIsLoading(false));
   }, []);
 
-  const applySession = useCallback(async (session: AuthResponse) => {
-    setStoredToken(session.token);
-    setToken(session.token);
-    setUser(await getCurrentUser(session.token));
+  const login = useCallback(async (input: LoginInput) => {
+    await apiLogin(input);
+    setUser(await getCurrentUser());
   }, []);
 
-  const login = useCallback(
-    async (input: LoginInput) => {
-      await applySession(await apiLogin(input));
-    },
-    [applySession],
-  );
+  const register = useCallback(async (input: RegisterInput) => {
+    await apiRegister(input);
+    setUser(await getCurrentUser());
+  }, []);
 
-  const register = useCallback(
-    async (input: RegisterInput) => {
-      await applySession(await apiRegister(input));
-    },
-    [applySession],
-  );
+  const updateProfile = useCallback(async (formData: FormData) => {
+    setUser(await apiUpdateProfile(formData));
+  }, []);
 
-  const updateProfile = useCallback(
-    async (formData: FormData) => {
-      if (!token) {
-        throw new Error("Not authenticated");
-      }
-      setUser(await apiUpdateProfile(token, formData));
-    },
-    [token],
-  );
-
-  const logout = useCallback(() => {
-    clearStoredToken();
-    setToken(null);
+  const logout = useCallback(async () => {
+    await apiLogout();
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ token, user, isLoading, login, register, updateProfile, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, updateProfile, logout }}>
       {children}
     </AuthContext.Provider>
   );

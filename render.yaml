@@ -27,6 +27,10 @@ services:
         value: require
       - key: JWT_SECRET
         generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: COOKIE_SAME_SITE
+        value: None
       - key: STORAGE_PROVIDER
         value: r2
       - key: R2_BUCKET

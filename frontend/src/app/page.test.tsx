@@ -3,8 +3,6 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { AuthProvider } from "@/components/AuthProvider";
 import HomePage from "./page";
 
-const TOKEN_STORAGE_KEY = "threadtrades.token";
-
 const mockUser = {
   id: 1,
   username: "alice",
@@ -14,10 +12,12 @@ const mockUser = {
   role: "USER" as const,
 };
 
+const getCurrentUser = vi.fn();
 vi.mock("@/lib/api/auth", () => ({
-  getCurrentUser: vi.fn(async () => mockUser),
+  getCurrentUser: (...args: unknown[]) => getCurrentUser(...args),
   login: vi.fn(),
   register: vi.fn(),
+  logout: vi.fn(),
   updateProfile: vi.fn(),
 }));
 
@@ -91,18 +91,15 @@ const baseMatch = {
   createdAt: "2026-01-01T00:00:00Z",
 };
 
-function loginAs() {
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, "test-token");
-}
-
 describe("HomePage", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
-    window.localStorage.clear();
   });
 
   it("shows login/register entry points when logged out", async () => {
+    getCurrentUser.mockRejectedValue(new Error("Unauthorized"));
+
     render(
       <AuthProvider>
         <HomePage />
@@ -114,7 +111,7 @@ describe("HomePage", () => {
   });
 
   it("renders each dashboard section when data is present", async () => {
-    loginAs();
+    getCurrentUser.mockResolvedValue(mockUser);
     listMyClothingItems.mockResolvedValue([myItem]);
     listMatches.mockResolvedValue([baseMatch]);
     getSwap.mockResolvedValue({
@@ -159,12 +156,12 @@ describe("HomePage", () => {
 
     expect(await screen.findByText("Carol")).toBeInTheDocument();
 
-    await waitFor(() => expect(getSwipeDeck).toHaveBeenCalledWith("test-token", myItem.id));
+    await waitFor(() => expect(getSwipeDeck).toHaveBeenCalledWith(myItem.id));
     expect(await screen.findByText("See more")).toBeInTheDocument();
   });
 
   it("shows empty states when there is no dashboard activity", async () => {
-    loginAs();
+    getCurrentUser.mockResolvedValue(mockUser);
     listMyClothingItems.mockResolvedValue([]);
     listMatches.mockResolvedValue([]);
     listSwapHistory.mockResolvedValue([]);

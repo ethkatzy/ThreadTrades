@@ -12,7 +12,6 @@ vi.mock("next/navigation", () => ({
 describe("ClothingItemDetailPage", () => {
   afterEach(() => {
     vi.clearAllMocks();
-    window.localStorage.clear();
   });
 
   it("redirects to /login when not authenticated", async () => {

@@ -18,7 +18,7 @@ import { Avatar } from "@/components/Avatar";
 import { mediaUrl } from "@/lib/media";
 
 export default function MatchThreadPage() {
-  const { token, user, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const router = useRouter();
   const params = useParams<{ matchId: string }>();
   const matchId = Number(params.matchId);
@@ -52,26 +52,25 @@ export default function MatchThreadPage() {
   }, [isLoading, user, router]);
 
   useEffect(() => {
-    if (!token || Number.isNaN(matchId)) {
+    if (!user || Number.isNaN(matchId)) {
       return;
     }
-    listMatches(token)
+    listMatches()
       .then((matches) => setMatch(matches.find((m) => m.id === matchId) ?? null))
       .catch(() => setError("Couldn't load this match."));
-    listMessages(token, matchId)
+    listMessages(matchId)
       .then(setMessages)
       .catch(() => setError("Couldn't load messages."));
-    getSwap(token, matchId)
+    getSwap(matchId)
       .then(setSwap)
       .catch(() => setSwapError("Couldn't load swap status."));
-  }, [token, matchId]);
+  }, [user, matchId]);
 
   useEffect(() => {
-    if (!token || Number.isNaN(matchId)) {
+    if (!user || Number.isNaN(matchId)) {
       return;
     }
     let client: Client | null = connectMatchSocket({
-      token,
       matchId,
       onMessage: (message) => setMessages((prev) => (prev ? [...prev, message] : [message])),
       onSwapUpdate: setSwap,
@@ -81,7 +80,7 @@ export default function MatchThreadPage() {
       client?.deactivate();
       client = null;
     };
-  }, [token, matchId]);
+  }, [user, matchId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ block: "end" });
@@ -90,13 +89,13 @@ export default function MatchThreadPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const content = draft.trim();
-    if (!token || !content || isSending) {
+    if (!user || !content || isSending) {
       return;
     }
     setIsSending(true);
     setError(null);
     try {
-      await sendMessage(token, matchId, content);
+      await sendMessage(matchId, content);
       setDraft("");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Couldn't send that message.");
@@ -105,14 +104,14 @@ export default function MatchThreadPage() {
     }
   }
 
-  async function handleSwapDecision(decide: (token: string, matchId: number) => Promise<Swap>) {
-    if (!token || isDeciding) {
+  async function handleSwapDecision(decide: (matchId: number) => Promise<Swap>) {
+    if (!user || isDeciding) {
       return;
     }
     setIsDeciding(true);
     setSwapError(null);
     try {
-      setSwap(await decide(token, matchId));
+      setSwap(await decide(matchId));
     } catch (err) {
       setSwapError(err instanceof ApiError ? err.message : "Couldn't update the swap.");
     } finally {
@@ -141,13 +140,13 @@ export default function MatchThreadPage() {
   // pre-filled with that same 5-star default so the user can still give a
   // specific rating; submitting overwrites the auto-generated one in place.
   async function handleItemReceived() {
-    if (!token || isSubmittingReview) {
+    if (!user || isSubmittingReview) {
       return;
     }
     setIsSubmittingReview(true);
     setReviewError(null);
     try {
-      const result = await submitReview(token, matchId, {});
+      const result = await submitReview(matchId, {});
       applyReviewResult(result);
       setReviewRating(result.rating);
       setReviewComment(result.comment ?? "");
@@ -174,13 +173,13 @@ export default function MatchThreadPage() {
   }
 
   async function handleSubmitReview() {
-    if (!token || isSubmittingReview) {
+    if (!user || isSubmittingReview) {
       return;
     }
     setIsSubmittingReview(true);
     setReviewError(null);
     try {
-      const result = await submitReview(token, matchId, {
+      const result = await submitReview(matchId, {
         rating: reviewRating ?? undefined,
         comment: reviewComment.trim() || undefined,
       });
