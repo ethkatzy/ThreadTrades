@@ -13,6 +13,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -41,11 +42,27 @@ public class SecurityConfig {
     }
 
     @Bean
+    public CookieCsrfTokenRepository csrfTokenRepository(
+            @Value("${app.cookie.secure}") boolean secure, @Value("${app.cookie.same-site}") String sameSite) {
+        // csrf.spa()'s default CookieCsrfTokenRepository doesn't know about this app's
+        // COOKIE_SECURE/COOKIE_SAME_SITE settings (those only drove SessionCookieService's
+        // tt_session cookie), so on Render it wrote XSRF-TOKEN with no SameSite attribute --
+        // the browser defaults that to Lax and silently drops it on the cross-site frontend/
+        // backend split (same *.onrender.com Public-Suffix-List issue as tt_session, see
+        // ROADMAP.md #3), so every non-GET request past login/register 401'd for "missing"
+        // CSRF header the frontend never actually had a cookie to read.
+        CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        repository.setCookieCustomizer(cookie -> cookie.secure(secure).sameSite(sameSite));
+        return repository;
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             CsrfCookieFilter csrfCookieFilter,
-            JsonAuthenticationEntryPoint authenticationEntryPoint)
+            JsonAuthenticationEntryPoint authenticationEntryPoint,
+            CookieCsrfTokenRepository csrfTokenRepository)
             throws Exception {
         http
                 // The session JWT now travels as an httpOnly cookie (ROADMAP.md #3) instead of a
@@ -54,7 +71,9 @@ public class SecurityConfig {
                 // a JS-readable XSRF-TOKEN cookie + X-XSRF-TOKEN header double-submit check)
                 // closes the CSRF hole that reopens once auth is cookie-based. Login/register are
                 // exempt since there's no session yet to hijack.
-                .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/auth/register", "/api/auth/login"))
+                .csrf(csrf -> csrf.spa()
+                        .csrfTokenRepository(csrfTokenRepository)
+                        .ignoringRequestMatchers("/api/auth/register", "/api/auth/login"))
                 .cors(Customizer.withDefaults())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
