@@ -11,6 +11,8 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
 
     Optional<Review> findBySwapIdAndReviewerId(Long swapId, Long reviewerId);
 
+    List<Review> findBySwapIdInAndReviewerId(Collection<Long> swapIds, Long reviewerId);
+
     List<Review> findByRevieweeIdOrderByCreatedAtDesc(Long revieweeId);
 
     @Query("select avg(r.rating) as averageRating, count(r) as reviewCount from Review r "

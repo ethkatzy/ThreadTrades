@@ -20,10 +20,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final AppUserRepository appUserRepository;
+    private final AppUserAuthCache authCache;
 
-    public JwtAuthenticationFilter(JwtService jwtService, AppUserRepository appUserRepository) {
+    public JwtAuthenticationFilter(
+            JwtService jwtService, AppUserRepository appUserRepository, AppUserAuthCache authCache) {
         this.jwtService = jwtService;
         this.appUserRepository = appUserRepository;
+        this.authCache = authCache;
     }
 
     @Override
@@ -33,27 +36,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         var cookie = WebUtils.getCookie(request, SessionCookieService.COOKIE_NAME);
         if (cookie != null) {
             String token = cookie.getValue();
-            jwtService.parseToken(token).ifPresent(user -> {
-                // A banned account's already-issued JWTs are rejected here too, not just
-                // at login -- otherwise a ban wouldn't take effect until the token's
-                // natural expiry (app.jwt.expiration-ms, 24h by default). This adds one
-                // indexed PK lookup to every authenticated request; the alternative
-                // (banned users keep working for up to a day) isn't an acceptable
-                // trade-off for a moderation action meant to be immediate.
-                AppUser appUser = appUserRepository.findById(user.appUserId()).orElse(null);
-                if (appUser == null || appUser.isBanned()) {
-                    return;
-                }
-                // The granted authority is built from this freshly-fetched row's role, not
-                // the JWT claim (user.role()) -- reuses the same lookup already done for the
-                // ban check, so an admin promotion/demotion takes effect on the very next
-                // request instead of waiting for the token to expire or the user to log in
-                // again, matching the immediacy the ban check already guarantees.
-                var authority = new SimpleGrantedAuthority("ROLE_" + appUser.getRole().name());
-                var authentication = new UsernamePasswordAuthenticationToken(user, null, List.of(authority));
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            });
+            jwtService.parseToken(token).ifPresent(this::authenticate);
         }
         filterChain.doFilter(request, response);
+    }
+
+    // A banned account's already-issued JWTs are rejected here too, not just at
+    // login -- otherwise a ban wouldn't take effect until the token's natural
+    // expiry (app.jwt.expiration-ms, 24h by default). The granted authority is
+    // likewise built from the current DB role, not the JWT claim (user.role()),
+    // so an admin promotion/demotion takes effect on the very next request
+    // instead of waiting for the token to expire or the user to log in again.
+    // AppUserAuthCache short-circuits the DB lookup this requires on most
+    // requests; AdminUserService invalidates it on ban/unban/promote/demote so
+    // this stays exactly as immediate as a plain per-request DB hit.
+    private void authenticate(AuthenticatedUser user) {
+        AppUserAuthCache.Entry entry =
+                authCache.get(user.appUserId()).orElseGet(() -> loadAndCache(user.appUserId()));
+        if (entry == null || entry.banned()) {
+            return;
+        }
+        var authority = new SimpleGrantedAuthority("ROLE_" + entry.role().name());
+        var authentication = new UsernamePasswordAuthenticationToken(user, null, List.of(authority));
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    private AppUserAuthCache.Entry loadAndCache(Long appUserId) {
+        AppUser appUser = appUserRepository.findById(appUserId).orElse(null);
+        if (appUser == null) {
+            return null;
+        }
+        return authCache.put(appUserId, appUser.isBanned(), appUser.getRole());
     }
 }

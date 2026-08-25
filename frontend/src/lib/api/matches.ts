@@ -1,6 +1,8 @@
 import type { UserProfile } from "./auth";
 import { apiFetch } from "./client";
 import type { ClothingItem } from "./clothingItems";
+import type { Message } from "./messages";
+import type { Swap } from "./swaps";
 
 export type Match = {
   id: number;
@@ -13,6 +15,8 @@ export type Match = {
   myItem: ClothingItem;
   otherItem: ClothingItem;
   createdAt: string;
+  swap: Swap | null;
+  lastMessage: Message | null;
 };
 
 export function listMatches(): Promise<Match[]> {

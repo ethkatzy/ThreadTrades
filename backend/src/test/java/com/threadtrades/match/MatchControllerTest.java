@@ -108,7 +108,8 @@ class MatchControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.id == " + matchId + ")].otherUsername").value("ravi"))
                 .andExpect(jsonPath("$[?(@.id == " + matchId + ")].myItem.id").value(itemA.intValue()))
-                .andExpect(jsonPath("$[?(@.id == " + matchId + ")].otherItem.id").value(itemB.intValue()));
+                .andExpect(jsonPath("$[?(@.id == " + matchId + ")].otherItem.id").value(itemB.intValue()))
+                .andExpect(jsonPath("$[?(@.id == " + matchId + ")].swap.status").value("PENDING"));
 
         mockMvc.perform(get("/api/matches").cookie(tokenB))
                 .andExpect(status().isOk())

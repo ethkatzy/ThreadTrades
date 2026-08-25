@@ -6,18 +6,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { listMyClothingItems, type ClothingItem } from "@/lib/api/clothingItems";
 import { listMatches, type Match } from "@/lib/api/matches";
-import { listMessages, type Message } from "@/lib/api/messages";
 import { getSwipeDeck } from "@/lib/api/swipes";
-import { getSwap, listSwapHistory, type Swap, type SwapHistoryEntry } from "@/lib/api/swaps";
+import { listSwapHistory, type Swap, type SwapHistoryEntry } from "@/lib/api/swaps";
 import { Card } from "@/components/Card";
 import { ButtonLink } from "@/components/Button";
 import { mediaUrl } from "@/lib/media";
-
-type DashboardMatch = {
-  match: Match;
-  swap: Swap | null;
-  lastMessage: Message | null;
-};
 
 function ItemThumbnail({ item, size = 80 }: { item: ClothingItem; size?: number }) {
   return (
@@ -42,7 +35,7 @@ export default function HomePage() {
   const [items, setItems] = useState<ClothingItem[] | null>(null);
   const [itemsError, setItemsError] = useState<string | null>(null);
 
-  const [dashboardMatches, setDashboardMatches] = useState<DashboardMatch[] | null>(null);
+  const [dashboardMatches, setDashboardMatches] = useState<Match[] | null>(null);
   const [dashboardError, setDashboardError] = useState<string | null>(null);
 
   const [history, setHistory] = useState<SwapHistoryEntry[] | null>(null);
@@ -67,22 +60,9 @@ export default function HomePage() {
     }
     let cancelled = false;
     listMatches()
-      .then(async (matches) => {
-        const enriched = await Promise.all(
-          matches.map(async (match) => {
-            const [swap, messages] = await Promise.all([
-              getSwap(match.id).catch(() => null),
-              listMessages(match.id).catch(() => null),
-            ]);
-            return {
-              match,
-              swap,
-              lastMessage: messages && messages.length > 0 ? messages[messages.length - 1] : null,
-            };
-          }),
-        );
+      .then((matches) => {
         if (!cancelled) {
-          setDashboardMatches(enriched);
+          setDashboardMatches(matches);
         }
       })
       .catch(() => {
@@ -148,12 +128,11 @@ export default function HomePage() {
   }
 
   const needsAction = (dashboardMatches ?? []).filter(
-    (dm): dm is DashboardMatch & { swap: Swap } =>
-      dm.swap !== null && dm.swap.status === "PENDING" && !dm.swap.iAccepted,
+    (m): m is Match & { swap: Swap } => m.swap !== null && m.swap.status === "PENDING" && !m.swap.iAccepted,
   );
 
   const recentThreads = (dashboardMatches ?? [])
-    .filter((dm): dm is DashboardMatch & { lastMessage: Message } => dm.lastMessage !== null)
+    .filter((m): m is Match & { lastMessage: NonNullable<Match["lastMessage"]> } => m.lastMessage !== null)
     .sort((a, b) => new Date(b.lastMessage.sentAt).getTime() - new Date(a.lastMessage.sentAt).getTime())
     .slice(0, 5);
 
@@ -170,7 +149,7 @@ export default function HomePage() {
         <section>
           <h2 className="mb-3 text-lg font-medium">Swaps needing your action</h2>
           <ul className="flex flex-col gap-3">
-            {needsAction.map(({ match, swap }) => (
+            {needsAction.map((match) => (
               <Card as="li" key={match.id} className="flex items-center gap-4">
                 <ItemThumbnail item={match.myItem} />
                 <div className="min-w-0 flex-1">
@@ -179,7 +158,7 @@ export default function HomePage() {
                     href={`/matches/${match.id}`}
                     className="block truncate text-sm text-muted underline"
                   >
-                    {swap.otherAccepted
+                    {match.swap.otherAccepted
                       ? `${match.otherUserName} wants to complete this swap`
                       : "Ready to confirm this swap"}
                   </Link>
@@ -201,11 +180,11 @@ export default function HomePage() {
         )}
         {recentThreads.length > 0 && (
           <ul className="flex flex-col gap-3">
-            {recentThreads.map(({ match, lastMessage }) => (
+            {recentThreads.map((match) => (
               <Card as="li" key={match.id}>
                 <Link href={`/matches/${match.id}`} className="flex flex-col gap-1">
                   <span className="font-medium">{match.otherUserName}</span>
-                  <span className="truncate text-sm text-muted">{lastMessage.content}</span>
+                  <span className="truncate text-sm text-muted">{match.lastMessage.content}</span>
                 </Link>
               </Card>
             ))}

@@ -1,6 +1,7 @@
 package com.threadtrades.admin;
 
 import com.threadtrades.common.PagedResponse;
+import com.threadtrades.security.AppUserAuthCache;
 import com.threadtrades.user.AppUser;
 import com.threadtrades.user.AppUserRepository;
 import com.threadtrades.user.UserProfile;
@@ -16,10 +17,15 @@ public class AdminUserService {
 
     private final UserProfileRepository userProfileRepository;
     private final AppUserRepository appUserRepository;
+    private final AppUserAuthCache authCache;
 
-    public AdminUserService(UserProfileRepository userProfileRepository, AppUserRepository appUserRepository) {
+    public AdminUserService(
+            UserProfileRepository userProfileRepository,
+            AppUserRepository appUserRepository,
+            AppUserAuthCache authCache) {
         this.userProfileRepository = userProfileRepository;
         this.appUserRepository = appUserRepository;
+        this.authCache = authCache;
     }
 
     @Transactional(readOnly = true)
@@ -44,22 +50,27 @@ public class AdminUserService {
         }
         appUser.ban();
         appUserRepository.save(appUser);
+        authCache.invalidate(appUser.getId());
         return AdminUserResponse.from(profile);
     }
 
     @Transactional
     public AdminUserResponse unban(Long profileId) {
         UserProfile profile = profileFor(profileId);
-        profile.getAppUser().unban();
-        appUserRepository.save(profile.getAppUser());
+        AppUser appUser = profile.getAppUser();
+        appUser.unban();
+        appUserRepository.save(appUser);
+        authCache.invalidate(appUser.getId());
         return AdminUserResponse.from(profile);
     }
 
     @Transactional
     public AdminUserResponse promote(Long profileId) {
         UserProfile profile = profileFor(profileId);
-        profile.getAppUser().promoteToAdmin();
-        appUserRepository.save(profile.getAppUser());
+        AppUser appUser = profile.getAppUser();
+        appUser.promoteToAdmin();
+        appUserRepository.save(appUser);
+        authCache.invalidate(appUser.getId());
         return AdminUserResponse.from(profile);
     }
 
@@ -72,6 +83,7 @@ public class AdminUserService {
         }
         appUser.demoteToUser();
         appUserRepository.save(appUser);
+        authCache.invalidate(appUser.getId());
         return AdminUserResponse.from(profile);
     }
 

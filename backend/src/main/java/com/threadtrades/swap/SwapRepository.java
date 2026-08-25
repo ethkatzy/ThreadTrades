@@ -1,5 +1,6 @@
 package com.threadtrades.swap;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 public interface SwapRepository extends JpaRepository<Swap, Long> {
 
     Optional<Swap> findByMatchId(Long matchId);
+
+    List<Swap> findByMatchIdIn(Collection<Long> matchIds);
 
     Page<Swap> findByStatus(SwapStatus status, Pageable pageable);
 
