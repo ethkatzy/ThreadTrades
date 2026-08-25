@@ -63,3 +63,10 @@ services:
       # Same value as R2_PUBLIC_BASE_URL above.
       - key: NEXT_PUBLIC_STORAGE_PUBLIC_URL
         sync: false
+      # Where THIS service's own server proxies /api/** to (see ROADMAP.md #3) --
+      # same public URL as NEXT_PUBLIC_API_URL above, since no private networking
+      # is set up between the two services. Despite not being a NEXT_PUBLIC_* var,
+      # this is still baked in at build time (see frontend/Dockerfile) -- changing
+      # it needs a rebuild, same as NEXT_PUBLIC_API_URL.
+      - key: BACKEND_INTERNAL_URL
+        sync: false

@@ -2,6 +2,17 @@ import type { NextConfig } from "next";
 
 const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080");
 
+// Server-side only (not NEXT_PUBLIC_*): where THIS container reaches the backend to proxy
+// /api/** through, as opposed to apiUrl above, which is the browser-facing URL used for
+// images/WebSocket. In Docker Compose that's the backend container's service name
+// (http://backend:8080); on Render, without private networking set up between the two
+// services, it's the same public URL as apiUrl. Despite not being NEXT_PUBLIC_*, this
+// still needs to be present at `next build` time, not just container start: rewrites()
+// below is resolved once during the build and baked into .next/routes-manifest.json --
+// `next start` does not re-invoke this function or re-read this var (see
+// frontend/Dockerfile's ARG and ROADMAP.md #3).
+const backendInternalUrl = process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8080";
+
 // Only set when the backend's app.storage.provider=r2 (ROADMAP.md #1) --
 // R2StorageService hands out fully-qualified URLs on that public origin
 // directly, not "/uploads/**" on the API host, so it needs its own pattern.
@@ -10,6 +21,16 @@ const storagePublicUrl = process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL
   : null;
 
 const nextConfig: NextConfig = {
+  // Proxies API calls through this server so the browser only ever talks to its own
+  // origin -- see backendInternalUrl above and ROADMAP.md #3. Without this, tt_session/
+  // XSRF-TOKEN are cross-site cookies: third-party cookie blocking can drop them
+  // entirely, and even when it doesn't, the frontend's own JS can never read XSRF-TOKEN
+  // via document.cookie to echo it back as the CSRF header, since it belongs to a
+  // different site. Rewriting makes every Set-Cookie the backend sends look, to the
+  // browser, like it came from this origin.
+  async rewrites() {
+    return [{ source: "/api/:path*", destination: `${backendInternalUrl}/api/:path*` }];
+  },
   images: {
     remotePatterns: [
       {

@@ -13,7 +13,7 @@ describe("swipes api", () => {
     await getSwipeDeck(7);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/swipes/deck?offeredItemId=7");
+    expect(url).toBe("/api/swipes/deck?offeredItemId=7");
     expect(init.credentials).toBe("include");
   });
 
@@ -26,7 +26,7 @@ describe("swipes api", () => {
     await recordSwipe(7, 42, "LIKE");
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/swipes");
+    expect(url).toBe("/api/swipes");
     expect(init.method).toBe("POST");
     expect(init.body).toBe(JSON.stringify({ offeredItemId: 7, clothingItemId: 42, decision: "LIKE" }));
     expect((init.headers as Headers).get("Content-Type")).toBe("application/json");

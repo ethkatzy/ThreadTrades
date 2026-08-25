@@ -13,7 +13,7 @@ describe("matches api", () => {
     await listMatches();
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/matches");
+    expect(url).toBe("/api/matches");
     expect(init.credentials).toBe("include");
   });
 });

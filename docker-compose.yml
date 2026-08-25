@@ -50,6 +50,10 @@ services:
       - backend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8080
+      # Container-network name, not localhost -- this is read server-side by the
+      # frontend container itself to proxy /api/** to backend (see ROADMAP.md #3),
+      # not by the browser.
+      BACKEND_INTERNAL_URL: http://backend:8080
     ports:
       - "3000:3000"
     volumes:

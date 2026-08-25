@@ -1,7 +1,5 @@
 import { getCsrfToken } from "./csrf";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-
 export class ApiError extends Error {
   status: number;
 
@@ -42,7 +40,13 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     }
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  // Relative, not an absolute backend URL: next.config.ts's rewrites() proxies /api/**
+  // server-side to the real backend, so the browser only ever talks to its own origin.
+  // That's not just cosmetic -- it's what makes tt_session/XSRF-TOKEN work at all on
+  // Render, where frontend/backend are separate *.onrender.com sites (see ROADMAP.md #3):
+  // a same-site cookie is readable via document.cookie and isn't subject to third-party
+  // cookie blocking, neither of which any cookie flag combination can fix cross-site.
+  const response = await fetch(path, {
     ...options,
     headers,
     credentials: "include",

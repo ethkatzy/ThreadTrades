@@ -20,7 +20,7 @@ describe("apiFetch", () => {
 
     expect(result).toEqual({ ok: true });
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/ping");
+    expect(url).toBe("/api/ping");
     expect((init.headers as Headers).get("Content-Type")).toBe("application/json");
     expect(init.credentials).toBe("include");
   });

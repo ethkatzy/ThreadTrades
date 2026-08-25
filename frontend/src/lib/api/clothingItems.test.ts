@@ -15,7 +15,7 @@ describe("getClothingItem", () => {
     await getClothingItem(5);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/clothing-items/5");
+    expect(url).toBe("/api/clothing-items/5");
     expect(init.credentials).toBe("include");
   });
 });
@@ -37,7 +37,7 @@ describe("uploadClothingItem", () => {
     await uploadClothingItem(formData);
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toBe("http://localhost:8080/api/clothing-items");
+    expect(url).toBe("/api/clothing-items");
     expect(init.method).toBe("POST");
     expect(init.body).toBe(formData);
     // The browser must set its own multipart boundary (AUDIT.md #8) --
