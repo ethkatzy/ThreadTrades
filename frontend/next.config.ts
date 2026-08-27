@@ -22,7 +22,14 @@ const nextConfig: NextConfig = {
   // different site. Rewriting makes every Set-Cookie the backend sends look, to the
   // browser, like it came from this origin.
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${backendInternalUrl}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${backendInternalUrl}/api/:path*` },
+      // Backend's actuator endpoints live at the root, not under /api/** -- the admin
+      // dashboard's health check (apiFetch("/actuator/health")) needs this too, same
+      // reasoning as /api/** above. The backend's own SecurityConfig still gates
+      // everything past health/info to ROLE_ADMIN, so this doesn't widen access.
+      { source: "/actuator/:path*", destination: `${backendInternalUrl}/actuator/:path*` },
+    ];
   },
   images: {
     // "/uploads/**" (LocalDiskStorageService) and "/media/**"
