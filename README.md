@@ -10,15 +10,11 @@ This is a from-scratch rewrite of an [earlier university group project](https://
 conceptually vs. rebuilt) and [`ROADMAP.md`](ROADMAP.md) for deferred
 decisions, current feature status, and implementation notes.
 
-## Live demo
-
-- Frontend: https://threadtrades-frontend.onrender.com
-- Backend: https://threadtrades-backend.onrender.com
+## [Live demo](https://threadtrades-frontend.onrender.com)
 
 Both services run on Render's free tier, so the first request after a period
-of inactivity can take up to a minute while the service spins back up. The
-database is hosted separately on Neon/Supabase (Render's free Postgres
-expires after 30 days).
+of inactivity can take up to a minute while the service spins back up. The backend takes longer to load, so 
+if you can't log in, wait a few more minutes The database is hosted separately on Neon.
 
 ## Tech stack
 

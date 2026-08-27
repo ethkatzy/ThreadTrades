@@ -37,8 +37,6 @@ services:
         sync: false
       - key: R2_ENDPOINT
         sync: false
-      - key: R2_PUBLIC_BASE_URL
-        sync: false
       - key: R2_ACCESS_KEY_ID
         sync: false
       - key: R2_SECRET_ACCESS_KEY
@@ -59,9 +57,6 @@ services:
       # the backend service's public URL. Changing this later needs a
       # rebuild, not just a restart.
       - key: NEXT_PUBLIC_API_URL
-        sync: false
-      # Same value as R2_PUBLIC_BASE_URL above.
-      - key: NEXT_PUBLIC_STORAGE_PUBLIC_URL
         sync: false
       # Where THIS service's own server proxies /api/** to (see ROADMAP.md #3) --
       # same public URL as NEXT_PUBLIC_API_URL above, since no private networking

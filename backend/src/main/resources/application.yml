@@ -42,7 +42,6 @@ app:
     r2:
       bucket: ${R2_BUCKET:}
       endpoint: ${R2_ENDPOINT:}
-      public-base-url: ${R2_PUBLIC_BASE_URL:}
       access-key-id: ${R2_ACCESS_KEY_ID:}
       secret-access-key: ${R2_SECRET_ACCESS_KEY:}
   cors:

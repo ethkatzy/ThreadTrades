@@ -13,13 +13,6 @@ const apiUrl = new URL(process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080
 // frontend/Dockerfile's ARG and ROADMAP.md #3).
 const backendInternalUrl = process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8080";
 
-// Only set when the backend's app.storage.provider=r2 (ROADMAP.md #1) --
-// R2StorageService hands out fully-qualified URLs on that public origin
-// directly, not "/uploads/**" on the API host, so it needs its own pattern.
-const storagePublicUrl = process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL
-  ? new URL(process.env.NEXT_PUBLIC_STORAGE_PUBLIC_URL)
-  : null;
-
 const nextConfig: NextConfig = {
   // Proxies API calls through this server so the browser only ever talks to its own
   // origin -- see backendInternalUrl above and ROADMAP.md #3. Without this, tt_session/
@@ -32,24 +25,15 @@ const nextConfig: NextConfig = {
     return [{ source: "/api/:path*", destination: `${backendInternalUrl}/api/:path*` }];
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: apiUrl.protocol.replace(":", "") as "http" | "https",
-        hostname: apiUrl.hostname,
-        port: apiUrl.port,
-        pathname: "/uploads/**",
-      },
-      ...(storagePublicUrl
-        ? [
-            {
-              protocol: storagePublicUrl.protocol.replace(":", "") as "http" | "https",
-              hostname: storagePublicUrl.hostname,
-              port: storagePublicUrl.port,
-              pathname: "/**" as const,
-            },
-          ]
-        : []),
-    ],
+    // "/uploads/**" (LocalDiskStorageService) and "/media/**"
+    // (R2MediaController) are both served from the backend's own origin --
+    // see StorageService.store()'s javadoc and ROADMAP.md #3.
+    remotePatterns: ["/uploads/**", "/media/**"].map((pathname) => ({
+      protocol: apiUrl.protocol.replace(":", "") as "http" | "https",
+      hostname: apiUrl.hostname,
+      port: apiUrl.port,
+      pathname,
+    })),
     // The backend runs on localhost/a private IP in dev (and in the current
     // Docker Compose setup -- see ROADMAP.md #2, no deployment target is
     // chosen yet). remotePatterns above already pins requests to exactly

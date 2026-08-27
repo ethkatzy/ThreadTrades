@@ -20,7 +20,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
 ARG NEXT_PUBLIC_API_URL
-ARG NEXT_PUBLIC_STORAGE_PUBLIC_URL
 ARG BACKEND_INTERNAL_URL
 RUN npm run build
 

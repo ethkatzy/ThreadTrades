@@ -81,7 +81,13 @@ public class SecurityConfig {
                         // session cookie read off the handshake request (see
                         // WebSocketConfig's HandshakeInterceptor) since this raw HTTP upgrade
                         // request isn't a normal REST call the JWT filter should touch.
-                        .requestMatchers("/api/auth/**", "/actuator/health", "/actuator/info", "/uploads/**", "/ws/**")
+                        .requestMatchers(
+                                "/api/auth/**",
+                                "/actuator/health",
+                                "/actuator/info",
+                                "/uploads/**",
+                                "/media/**",
+                                "/ws/**")
                         .permitAll()
                         // Evaluated after the permitAll() above, so /actuator/health and
                         // /actuator/info stay public (first matching rule wins) -- this only
