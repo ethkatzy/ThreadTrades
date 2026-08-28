@@ -25,7 +25,7 @@ export default function SwipePage() {
   const [index, setIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastMatchItem, setLastMatchItem] = useState<ClothingItem | null>(null);
+  const [lastMatch, setLastMatch] = useState<{ item: ClothingItem; matchId: number } | null>(null);
 
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -57,7 +57,7 @@ export default function SwipePage() {
     // one, rather than showing stale results while the new deck is in flight.
     // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
     setItems(null);
-    setLastMatchItem(null);
+    setLastMatch(null);
     getSwipeDeck(offeredItemId)
       .then((deck) => {
         setItems(deck);
@@ -75,7 +75,7 @@ export default function SwipePage() {
     setError(null);
     try {
       const result = await recordSwipe(offeredItemId, item.id, decision);
-      setLastMatchItem(result.matched ? item : null);
+      setLastMatch(result.matched && result.matchId !== null ? { item, matchId: result.matchId } : null);
       setIndex((i) => i + 1);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong. Please try again.");
@@ -199,9 +199,12 @@ export default function SwipePage() {
         </button>
       </div>
 
-      {lastMatchItem && (
+      {lastMatch && (
         <p className="rounded bg-accent/15 px-4 py-2 text-sm text-accent">
-          It&apos;s a match on &quot;{lastMatchItem.name}&quot;! 🎉
+          It&apos;s a match on &quot;{lastMatch.item.name}&quot;! 🎉{" "}
+          <Link href={`/matches/${lastMatch.matchId}`} className="underline">
+            Go to chat
+          </Link>
         </p>
       )}
       {error && <p className="text-sm text-red-600">{error}</p>}

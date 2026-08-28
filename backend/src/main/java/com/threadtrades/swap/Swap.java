@@ -44,6 +44,13 @@ public class Swap {
     @Column(name = "accepted_by_user_b", nullable = false)
     private boolean acceptedByUserB;
 
+    @Column(name = "cash_amount_pence")
+    private Long cashAmountPence;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cash_owed_by_side")
+    private TradeSide cashOwedBySide;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -101,6 +108,38 @@ public class Swap {
 
     public void markRejected() {
         this.status = SwapStatus.REJECTED;
+    }
+
+    /**
+     * Called whenever the negotiated terms change (an extra item is added/removed, or the cash
+     * term is set/cleared) -- a stale accept from before the change must never carry forward to
+     * the new terms, so both sides have to re-accept.
+     */
+    public void resetAcceptance() {
+        this.acceptedByUserA = false;
+        this.acceptedByUserB = false;
+    }
+
+    public Long getCashAmountPence() {
+        return cashAmountPence;
+    }
+
+    public TradeSide getCashOwedBySide() {
+        return cashOwedBySide;
+    }
+
+    public boolean hasCashTerm() {
+        return cashAmountPence != null;
+    }
+
+    public void setCashTerm(TradeSide owedBySide, long amountPence) {
+        this.cashOwedBySide = owedBySide;
+        this.cashAmountPence = amountPence;
+    }
+
+    public void clearCashTerm() {
+        this.cashOwedBySide = null;
+        this.cashAmountPence = null;
     }
 
     public Instant getCreatedAt() {

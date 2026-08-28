@@ -7,7 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { UserReviews } from "@/components/UserReviews";
 import { ApiError } from "@/lib/api/client";
-import { listSwapHistory, type SwapHistoryEntry } from "@/lib/api/swaps";
+import { listSwapHistory, type SwapExtraItem, type SwapHistoryEntry } from "@/lib/api/swaps";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { mediaUrl } from "@/lib/media";
@@ -15,6 +15,25 @@ import { mediaUrl } from "@/lib/media";
 const inputClassName = "rounded border border-border px-3 py-2";
 const tabClassName = (active: boolean) =>
   `pb-2 text-sm font-medium ${active ? "border-b-2 border-accent text-accent" : "text-muted"}`;
+
+function formatPence(pence: number): string {
+  return `£${(pence / 100).toFixed(2)}`;
+}
+
+function ExtraItemLinks({ items }: { items: SwapExtraItem[] }) {
+  return (
+    <>
+      {items.map((extra, index) => (
+        <span key={extra.item.id}>
+          {index > 0 && ", "}
+          <Link href={`/clothing-items/${extra.item.id}`} className="text-accent underline">
+            {extra.item.name}
+          </Link>
+        </span>
+      ))}
+    </>
+  );
+}
 
 export default function ProfilePage() {
   const { user, isLoading, updateProfile } = useAuth();
@@ -193,6 +212,28 @@ export default function ProfilePage() {
                           {entry.otherUserName}
                         </Link>
                       </p>
+                      {(entry.myExtraItems.length > 0 ||
+                        entry.otherExtraItems.length > 0 ||
+                        entry.cashAmountPence !== null) && (
+                        <p className="text-xs text-muted">
+                          {entry.myExtraItems.length > 0 && (
+                            <>
+                              You also added <ExtraItemLinks items={entry.myExtraItems} />.{" "}
+                            </>
+                          )}
+                          {entry.otherExtraItems.length > 0 && (
+                            <>
+                              {entry.otherUserName} also added <ExtraItemLinks items={entry.otherExtraItems} />.{" "}
+                            </>
+                          )}
+                          {entry.cashAmountPence !== null && (
+                            <>
+                              {entry.iOweCash ? "You" : entry.otherUserName} added{" "}
+                              {formatPence(entry.cashAmountPence)} cash.
+                            </>
+                          )}
+                        </p>
+                      )}
                       <p className="text-muted">{new Date(entry.completedAt).toLocaleDateString()}</p>
                     </div>
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded border border-border bg-surface">

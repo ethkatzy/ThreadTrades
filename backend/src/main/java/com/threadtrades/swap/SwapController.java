@@ -1,12 +1,19 @@
 package com.threadtrades.swap;
 
+import com.threadtrades.clothing.ClothingItemResponse;
 import com.threadtrades.security.AuthenticatedUser;
 import com.threadtrades.ws.SwapTopics;
+import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -39,6 +46,50 @@ public class SwapController {
     @PatchMapping("/reject")
     public SwapResponse reject(@AuthenticationPrincipal AuthenticatedUser currentUser, @PathVariable Long matchId) {
         SwapResponse response = swapService.reject(currentUser.appUserId(), matchId);
+        messagingTemplate.convertAndSend(SwapTopics.destination(matchId), response);
+        return response;
+    }
+
+    @GetMapping("/other-items")
+    public List<ClothingItemResponse> otherItems(
+            @AuthenticationPrincipal AuthenticatedUser currentUser, @PathVariable Long matchId) {
+        return swapService.listOtherUserItems(currentUser.appUserId(), matchId);
+    }
+
+    @PostMapping("/extra-items")
+    public SwapResponse addExtraItem(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable Long matchId,
+            @Valid @RequestBody AddExtraItemRequest request) {
+        SwapResponse response = swapService.addExtraItem(currentUser.appUserId(), matchId, request.clothingItemId());
+        messagingTemplate.convertAndSend(SwapTopics.destination(matchId), response);
+        return response;
+    }
+
+    @DeleteMapping("/extra-items/{itemId}")
+    public SwapResponse removeExtraItem(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable Long matchId,
+            @PathVariable Long itemId) {
+        SwapResponse response = swapService.removeExtraItem(currentUser.appUserId(), matchId, itemId);
+        messagingTemplate.convertAndSend(SwapTopics.destination(matchId), response);
+        return response;
+    }
+
+    @PutMapping("/cash")
+    public SwapResponse setCashTerm(
+            @AuthenticationPrincipal AuthenticatedUser currentUser,
+            @PathVariable Long matchId,
+            @Valid @RequestBody SetCashTermRequest request) {
+        SwapResponse response =
+                swapService.setCashTerm(currentUser.appUserId(), matchId, request.amountPence(), request.iOwe());
+        messagingTemplate.convertAndSend(SwapTopics.destination(matchId), response);
+        return response;
+    }
+
+    @DeleteMapping("/cash")
+    public SwapResponse clearCashTerm(@AuthenticationPrincipal AuthenticatedUser currentUser, @PathVariable Long matchId) {
+        SwapResponse response = swapService.clearCashTerm(currentUser.appUserId(), matchId);
         messagingTemplate.convertAndSend(SwapTopics.destination(matchId), response);
         return response;
     }

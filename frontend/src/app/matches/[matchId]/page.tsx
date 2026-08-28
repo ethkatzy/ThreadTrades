@@ -7,6 +7,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { RatingBadge } from "@/components/RatingBadge";
 import { ApiError } from "@/lib/api/client";
+import { listMyClothingItems, type ClothingItem } from "@/lib/api/clothingItems";
 import { listMatches, type Match } from "@/lib/api/matches";
 import { listMessages, sendMessage, type Message } from "@/lib/api/messages";
 import { submitReview } from "@/lib/api/reviews";
@@ -15,6 +16,7 @@ import { connectMatchSocket } from "@/lib/ws/matchSocket";
 import { Button } from "@/components/Button";
 import { Card } from "@/components/Card";
 import { Avatar } from "@/components/Avatar";
+import { SwapNegotiationPanel } from "@/components/SwapNegotiationPanel";
 import { mediaUrl } from "@/lib/media";
 
 export default function MatchThreadPage() {
@@ -32,6 +34,7 @@ export default function MatchThreadPage() {
   const [swap, setSwap] = useState<Swap | null>(null);
   const [swapError, setSwapError] = useState<string | null>(null);
   const [isDeciding, setIsDeciding] = useState(false);
+  const [myItems, setMyItems] = useState<ClothingItem[]>([]);
 
   const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
   const [reviewRating, setReviewRating] = useState<number | null>(null);
@@ -64,6 +67,9 @@ export default function MatchThreadPage() {
     getSwap(matchId)
       .then(setSwap)
       .catch(() => setSwapError("Couldn't load swap status."));
+    listMyClothingItems()
+      .then(setMyItems)
+      .catch(() => setSwapError("Couldn't load your items."));
   }, [user, matchId]);
 
   useEffect(() => {
@@ -337,35 +343,45 @@ export default function MatchThreadPage() {
           )}
           {swap.status === "REJECTED" && <p className="text-muted">This swap was declined.</p>}
           {swap.status === "PENDING" && (
-            <div className="flex items-center justify-between gap-3">
-              <p>
-                {swap.iAccepted
-                  ? `You accepted. Waiting for ${match.otherUserName} to confirm.`
-                  : swap.otherAccepted
-                    ? `${match.otherUserName} wants to complete this swap.`
-                    : `Ready to swap ${match.myItem.name} for ${match.otherItem.name}?`}
-              </p>
-              <div className="flex shrink-0 gap-2">
-                {!swap.iAccepted && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <p>
+                  {swap.iAccepted
+                    ? `You accepted. Waiting for ${match.otherUserName} to confirm.`
+                    : swap.otherAccepted
+                      ? `${match.otherUserName} wants to complete this swap.`
+                      : `Ready to swap ${match.myItem.name} for ${match.otherItem.name}?`}
+                </p>
+                <div className="flex shrink-0 gap-2">
+                  {!swap.iAccepted && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleSwapDecision(acceptSwap)}
+                      disabled={isDeciding}
+                    >
+                      Accept
+                    </Button>
+                  )}
                   <Button
                     type="button"
+                    variant="secondary"
                     size="sm"
-                    onClick={() => handleSwapDecision(acceptSwap)}
+                    onClick={() => handleSwapDecision(rejectSwap)}
                     disabled={isDeciding}
                   >
-                    Accept
+                    Reject
                   </Button>
-                )}
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleSwapDecision(rejectSwap)}
-                  disabled={isDeciding}
-                >
-                  Reject
-                </Button>
+                </div>
               </div>
+              <SwapNegotiationPanel
+                matchId={matchId}
+                swap={swap}
+                myItems={myItems}
+                baseItemId={match.myItem.id}
+                otherUserName={match.otherUserName}
+                onUpdate={setSwap}
+              />
             </div>
           )}
         </Card>

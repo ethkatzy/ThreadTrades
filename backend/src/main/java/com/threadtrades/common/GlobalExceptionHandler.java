@@ -13,6 +13,12 @@ import com.threadtrades.review.ReviewNotFoundException;
 import com.threadtrades.review.SwapNotCompletedException;
 import com.threadtrades.storage.InvalidUploadException;
 import com.threadtrades.storage.UnsupportedImageTypeException;
+import com.threadtrades.swap.ExtraItemAlreadyAddedException;
+import com.threadtrades.swap.ExtraItemAlreadyBaseItemException;
+import com.threadtrades.swap.ExtraItemNoLongerAvailableException;
+import com.threadtrades.swap.ExtraItemNotAvailableException;
+import com.threadtrades.swap.ExtraItemNotFoundException;
+import com.threadtrades.swap.ExtraItemNotOwnedException;
 import com.threadtrades.swap.SwapAlreadyDecidedException;
 import com.threadtrades.swap.SwapNotFoundException;
 import com.threadtrades.swipe.CannotSwipeOwnItemException;
@@ -86,7 +92,8 @@ public class GlobalExceptionHandler {
         UserProfileNotFoundException.class,
         SwapNotFoundException.class,
         MessageNotFoundException.class,
-        ReviewNotFoundException.class
+        ReviewNotFoundException.class,
+        ExtraItemNotFoundException.class
     })
     public ResponseEntity<ApiError> handleNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ApiError(ex.getMessage()));
@@ -97,10 +104,21 @@ public class GlobalExceptionHandler {
         UsernameAlreadyInUseException.class,
         ItemAlreadySwipedException.class,
         SwapAlreadyDecidedException.class,
-        SwapNotCompletedException.class
+        SwapNotCompletedException.class,
+        ExtraItemAlreadyAddedException.class,
+        ExtraItemNoLongerAvailableException.class
     })
     public ResponseEntity<ApiError> handleConflict(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(new ApiError(ex.getMessage()));
+    }
+
+    @ExceptionHandler({
+        ExtraItemNotOwnedException.class,
+        ExtraItemNotAvailableException.class,
+        ExtraItemAlreadyBaseItemException.class
+    })
+    public ResponseEntity<ApiError> handleExtraItemBadRequest(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ApiError(ex.getMessage()));
     }
 
     @ExceptionHandler(CannotSwipeOwnItemException.class)

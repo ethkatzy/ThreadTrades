@@ -2,6 +2,7 @@ package com.threadtrades.admin;
 
 import com.threadtrades.common.PagedResponse;
 import com.threadtrades.swap.Swap;
+import com.threadtrades.swap.SwapExtraItemRepository;
 import com.threadtrades.swap.SwapNotFoundException;
 import com.threadtrades.swap.SwapRepository;
 import com.threadtrades.swap.SwapStatus;
@@ -14,9 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminSwapService {
 
     private final SwapRepository swapRepository;
+    private final SwapExtraItemRepository swapExtraItemRepository;
 
-    public AdminSwapService(SwapRepository swapRepository) {
+    public AdminSwapService(SwapRepository swapRepository, SwapExtraItemRepository swapExtraItemRepository) {
         this.swapRepository = swapRepository;
+        this.swapExtraItemRepository = swapExtraItemRepository;
     }
 
     @Transactional(readOnly = true)
@@ -51,6 +54,9 @@ public class AdminSwapService {
                 swap.markAccepted();
                 swap.getMatch().getItemA().markSwapped();
                 swap.getMatch().getItemB().markSwapped();
+                swapExtraItemRepository
+                        .findBySwapId(swap.getId())
+                        .forEach(extraItem -> extraItem.getClothingItem().markSwapped());
             }
             case REJECTED -> swap.markRejected();
             default -> throw new InvalidSwapForceResolveException();

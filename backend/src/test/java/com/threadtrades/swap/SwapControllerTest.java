@@ -1,9 +1,12 @@
 package com.threadtrades.swap;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -13,6 +16,8 @@ import com.threadtrades.TestcontainersConfiguration;
 import com.threadtrades.security.SessionCookieService;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -220,5 +225,274 @@ class SwapControllerTest {
         mockMvc.perform(get("/api/matches/1/swap")).andExpect(status().isUnauthorized());
         mockMvc.perform(patch("/api/matches/1/swap/accept").with(csrf())).andExpect(status().isUnauthorized());
         mockMvc.perform(patch("/api/matches/1/swap/reject").with(csrf())).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void addingExtraItemResetsAcceptanceAndValidatesAvailabilityBaseItemAndDuplicates() throws Exception {
+        Cookie tokenA = registerAndGetToken("liam@example.com", "liam");
+        Cookie tokenB = registerAndGetToken("mona@example.com", "mona");
+        Cookie tokenC = registerAndGetToken("nora@example.com", "nora");
+        Cookie tokenD = registerAndGetToken("owen@example.com", "owen");
+        Long itemA1 = uploadItem(tokenA, "Liam's Jacket");
+        Long itemB1 = uploadItem(tokenB, "Mona's Jacket");
+        Long matchAB = createMatch(tokenA, itemA1, tokenB, itemB1);
+
+        // Complete this unrelated swap so itemA1 becomes SWAPPED -- used below as a
+        // "no longer available" item to add elsewhere.
+        mockMvc.perform(patch("/api/matches/" + matchAB + "/swap/accept").with(csrf()).cookie(tokenA))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/matches/" + matchAB + "/swap/accept").with(csrf()).cookie(tokenB))
+                .andExpect(status().isOk());
+
+        Long itemA2 = uploadItem(tokenA, "Liam's Boots");
+        Long itemC1 = uploadItem(tokenC, "Nora's Jacket");
+        Long itemD1 = uploadItem(tokenD, "Owen's Jacket");
+        Long matchAC = createMatch(tokenA, itemA2, tokenC, itemC1);
+
+        // Owned by someone who isn't part of this match at all -- not ownership by the caller,
+        // ownership by *either match participant* is what's required.
+        mockMvc.perform(post("/api/matches/" + matchAC + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemD1 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isBadRequest());
+
+        // Already SWAPPED, from the unrelated match above.
+        mockMvc.perform(post("/api/matches/" + matchAC + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA1 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isBadRequest());
+
+        // Already the match's own base item.
+        mockMvc.perform(post("/api/matches/" + matchAC + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA2 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/api/matches/" + matchAC + "/swap/accept").with(csrf()).cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iAccepted").value(true));
+
+        Long itemA3 = uploadItem(tokenA, "Liam's Scarf");
+        mockMvc.perform(post("/api/matches/" + matchAC + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA3 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.myExtraItems[0].item.id").value(itemA3.intValue()))
+                .andExpect(jsonPath("$.myExtraItems[0].proposedByMe").value(true))
+                .andExpect(jsonPath("$.iAccepted").value(false));
+
+        mockMvc.perform(get("/api/matches/" + matchAC + "/swap").cookie(tokenC))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.otherExtraItems[0].item.id").value(itemA3.intValue()))
+                .andExpect(jsonPath("$.otherExtraItems[0].proposedByMe").value(false));
+
+        mockMvc.perform(post("/api/matches/" + matchAC + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA3 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void requestingTheOtherSidesItemMarksItAsARequestOnItsOwningSide() throws Exception {
+        Cookie tokenA = registerAndGetToken("penny@example.com", "penny");
+        Cookie tokenB = registerAndGetToken("quill@example.com", "quill");
+        Long itemA = uploadItem(tokenA, "Penny's Jacket");
+        Long itemB = uploadItem(tokenB, "Quill's Jacket");
+        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+        Long itemB2 = uploadItem(tokenB, "Quill's Boots");
+
+        mockMvc.perform(get("/api/matches/" + matchId + "/swap/other-items").cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(itemB2.intValue()))
+                .andExpect(jsonPath("$.length()").value(1));
+
+        // A requests B's second item -- it's on B's side (B owns it), but A proposed it.
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemB2 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.otherExtraItems[0].item.id").value(itemB2.intValue()))
+                .andExpect(jsonPath("$.otherExtraItems[0].proposedByMe").value(true));
+
+        // From B's side, the requested item shows up as B's own (myExtraItems), but B didn't
+        // propose it -- proposedByMe is false, distinguishing "requested from you" from "offered".
+        mockMvc.perform(get("/api/matches/" + matchId + "/swap").cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.myExtraItems[0].item.id").value(itemB2.intValue()))
+                .andExpect(jsonPath("$.myExtraItems[0].proposedByMe").value(false));
+    }
+
+    @Test
+    void removingAnExtraItemIsAllowedByEitherParticipantAndResetsAcceptance() throws Exception {
+        Cookie tokenA = registerAndGetToken("oscar@example.com", "oscar");
+        Cookie tokenB = registerAndGetToken("pia@example.com", "pia");
+        Long itemA1 = uploadItem(tokenA, "Oscar's Jacket");
+        Long itemB1 = uploadItem(tokenB, "Pia's Jacket");
+        Long matchId = createMatch(tokenA, itemA1, tokenB, itemB1);
+        Long itemA2 = uploadItem(tokenA, "Oscar's Boots");
+
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA2 + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/matches/" + matchId + "/swap/accept").with(csrf()).cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iAccepted").value(true));
+
+        // B (who didn't add it) can still decline/remove A's offered item -- it's a shared
+        // negotiation board, and this is no more destructive than any other term change.
+        mockMvc.perform(delete("/api/matches/" + matchId + "/swap/extra-items/" + itemA2)
+                        .with(csrf())
+                        .cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.myExtraItems").isEmpty());
+
+        mockMvc.perform(get("/api/matches/" + matchId + "/swap").cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.iAccepted").value(false));
+
+        mockMvc.perform(delete("/api/matches/" + matchId + "/swap/extra-items/" + itemA2)
+                        .with(csrf())
+                        .cookie(tokenA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cashTermIsViewerRelativeAndResetsAcceptance() throws Exception {
+        Cookie tokenA = registerAndGetToken("quinn@example.com", "quinn");
+        Cookie tokenB = registerAndGetToken("ruby@example.com", "ruby");
+        Long itemA = uploadItem(tokenA, "Quinn's Jacket");
+        Long itemB = uploadItem(tokenB, "Ruby's Jacket");
+        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+
+        mockMvc.perform(patch("/api/matches/" + matchId + "/swap/accept").with(csrf()).cookie(tokenA))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put("/api/matches/" + matchId + "/swap/cash")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountPence\":0,\"iOwe\":true}")
+                        .cookie(tokenA))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(put("/api/matches/" + matchId + "/swap/cash")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountPence\":1500,\"iOwe\":true}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashAmountPence").value(1500))
+                .andExpect(jsonPath("$.iOweCash").value(true))
+                .andExpect(jsonPath("$.iAccepted").value(false));
+
+        mockMvc.perform(get("/api/matches/" + matchId + "/swap").cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashAmountPence").value(1500))
+                .andExpect(jsonPath("$.iOweCash").value(false));
+
+        mockMvc.perform(delete("/api/matches/" + matchId + "/swap/cash").with(csrf()).cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cashAmountPence").doesNotExist())
+                .andExpect(jsonPath("$.iOweCash").doesNotExist());
+    }
+
+    @Test
+    void finalizingASwapWithExtraItemsAndCashMarksAllExtraItemsSwapped() throws Exception {
+        Cookie tokenA = registerAndGetToken("sam@example.com", "sam");
+        Cookie tokenB = registerAndGetToken("tara@example.com", "tara");
+        Long itemA = uploadItem(tokenA, "Sam's Jacket");
+        Long itemB = uploadItem(tokenB, "Tara's Jacket");
+        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+        Long extraA = uploadItem(tokenA, "Sam's Scarf");
+        Long extraB = uploadItem(tokenB, "Tara's Belt");
+
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + extraA + "}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + extraB + "}")
+                        .cookie(tokenB))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/api/matches/" + matchId + "/swap/cash")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountPence\":500,\"iOwe\":true}")
+                        .cookie(tokenA))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/matches/" + matchId + "/swap/accept").with(csrf()).cookie(tokenA))
+                .andExpect(status().isOk());
+        mockMvc.perform(patch("/api/matches/" + matchId + "/swap/accept").with(csrf()).cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("ACCEPTED"));
+
+        mockMvc.perform(get("/api/clothing-items/" + extraA).cookie(tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SWAPPED"));
+        mockMvc.perform(get("/api/clothing-items/" + extraB).cookie(tokenB))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SWAPPED"));
+
+        List<Map<String, Object>> history = JsonPath.read(
+                mockMvc.perform(get("/api/swaps/history").cookie(tokenA))
+                        .andExpect(status().isOk())
+                        .andReturn()
+                        .getResponse()
+                        .getContentAsString(),
+                "$[?(@.matchId == " + matchId + ")]");
+        assertThat(history).hasSize(1);
+        assertThat((Number) history.get(0).get("cashAmountPence")).isEqualTo(500);
+        assertThat((Boolean) history.get(0).get("iOweCash")).isTrue();
+    }
+
+    @Test
+    void extraItemAndCashEndpointsRequireAuthenticationAndParticipation() throws Exception {
+        Cookie tokenA = registerAndGetToken("uma@example.com", "uma");
+        Cookie tokenB = registerAndGetToken("vic@example.com", "vic");
+        Cookie outsiderToken = registerAndGetToken("wes@example.com", "wes");
+        Long itemA = uploadItem(tokenA, "Uma's Jacket");
+        Long itemB = uploadItem(tokenB, "Vic's Jacket");
+        Long matchId = createMatch(tokenA, itemA, tokenB, itemB);
+
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items").with(csrf()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/matches/" + matchId + "/swap/extra-items/1").with(csrf()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/api/matches/" + matchId + "/swap/cash").with(csrf()))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(delete("/api/matches/" + matchId + "/swap/cash").with(csrf()))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/api/matches/" + matchId + "/swap/extra-items")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"clothingItemId\":" + itemA + "}")
+                        .cookie(outsiderToken))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(put("/api/matches/" + matchId + "/swap/cash")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"amountPence\":100,\"iOwe\":true}")
+                        .cookie(outsiderToken))
+                .andExpect(status().isNotFound());
     }
 }
