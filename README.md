@@ -14,7 +14,7 @@ decisions, current feature status, and implementation notes.
 
 Both services run on Render's free tier, so the first request after a period
 of inactivity can take up to a minute while the service spins back up. The backend takes longer to load, so 
-if you can't log in, wait a few more minutes The database is hosted separately on Neon.
+if you can't log in, wait a few more minutes. The database is hosted separately on Neon.
 
 ## Tech stack
 
